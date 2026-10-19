@@ -91,7 +91,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        let settings = menu.addItem(withTitle: "Settings", action: #selector(settings(_:)), keyEquivalent: "")
+        let settings = menu.addItem(withTitle: "Settings…", action: #selector(settings(_:)), keyEquivalent: "")
         settings.target = self
         let quit = menu.addItem(withTitle: "Quit", action: #selector(quit(_:)), keyEquivalent: "")
         quit.target = self

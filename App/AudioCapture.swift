@@ -60,6 +60,20 @@ enum InputDevices {
 /// first word is not cut off. The ring is overwritten and never written to disk.
 final class AudioCapture: @unchecked Sendable {
     var onSamples: (@Sendable (AVAudioPCMBuffer, [Float]) -> Void)?
+    var onLevel: (@Sendable (Float) -> Void)?
+
+    var publishesLevel: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return levelPublishing
+        }
+        set {
+            lock.lock()
+            levelPublishing = newValue
+            lock.unlock()
+        }
+    }
 
     private let engine = AVAudioEngine()
     private let targetFormat = AVAudioFormat(
@@ -70,6 +84,9 @@ final class AudioCapture: @unchecked Sendable {
     )
     private let queue = DispatchQueue(label: "app.sotto.audio")
     private let lock = NSLock()
+    // Accessed only on the audio queue, including resets.
+    private var levelMeter = LevelMeter()
+    private var levelPublishing = false
     private var converter: AVAudioConverter?
     private var converterSource: AVAudioFormat?
     private var ring = PreRoll(capacity: 4_800)
@@ -88,7 +105,7 @@ final class AudioCapture: @unchecked Sendable {
             throw CaptureError.noInput
         }
         if !tapInstalled {
-            input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
                 self?.handle(buffer)
             }
             tapInstalled = true
@@ -105,6 +122,9 @@ final class AudioCapture: @unchecked Sendable {
             tapInstalled = false
         }
         engine.stop()
+        queue.sync {
+            levelMeter.reset()
+        }
         lock.lock()
         ring.reset()
         utterance.removeAll(keepingCapacity: true)
@@ -179,8 +199,18 @@ final class AudioCapture: @unchecked Sendable {
             utterance.append(contentsOf: floats)
         }
         let callback = onSamples
+        let publishesLevel = levelPublishing
+        let levelCallback = publishesLevel ? onLevel : nil
         lock.unlock()
+        let level: Float
+        if publishesLevel {
+            level = levelMeter.ingest(floats)
+        } else {
+            levelMeter.reset()
+            level = 0
+        }
         callback?(buffer, floats)
+        levelCallback?(level)
     }
 
     private func resample(_ buffer: AVAudioPCMBuffer, to target: AVAudioFormat) -> [Float] {

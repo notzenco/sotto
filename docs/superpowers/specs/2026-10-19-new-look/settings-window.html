@@ -1,0 +1,249 @@
+<style>
+  .sw { --acc: #0a84ff; display: flex; width: 100%; max-width: 900px; height: 560px; margin: 0 auto; border-radius: 12px;
+    overflow: hidden; background: #1e1e20; color: #e8e8ea; box-shadow: 0 18px 50px rgba(0,0,0,.35);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 1px solid #333; }
+  .side { width: 200px; flex: none; background: #262628; padding: 34px 8px 10px; position: relative; overflow-y: auto; }
+  .lights { position: absolute; top: 12px; left: 14px; display: flex; gap: 7px; }
+  .lights i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; } .lights i:nth-child(2) { background: #febc2e; } .lights i:nth-child(3) { background: #28c840; }
+  .search { margin: 0 4px 10px; padding: 5px 8px; border-radius: 6px; background: #1c1c1e; color: #8a8a8e; font-size: 12px; }
+  .nav { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; cursor: pointer; user-select: none; }
+  .nav:hover { background: rgba(255,255,255,.05); }
+  .nav.on { background: var(--acc); color: #fff; }
+  .nav .ic { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-size: 11px; color: #fff; flex: none; }
+  .sep { height: 1px; background: #3a3a3c; margin: 8px 6px; }
+  .main { flex: 1; overflow-y: auto; padding: 22px 26px; }
+  .pane { display: none; } .pane.on { display: block; }
+  .pane h2 { font-size: 20px; margin: 0 0 14px; color: #fff; }
+  .group { background: #2a2a2d; border-radius: 9px; margin-bottom: 14px; border: 1px solid #343437; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 14px; border-top: 1px solid #343437; }
+  .row:first-child { border-top: 0; }
+  .row .lbl { display: flex; flex-direction: column; } .row .lbl small { color: #8e8e93; font-size: 11.5px; }
+  .gh { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8e8e93; margin: 0 0 6px 4px; }
+  .new { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px; line-height: 15px;
+    background: rgba(10,132,255,.18); color: #64b5ff; vertical-align: 1px; }
+  .sel { padding: 3px 9px; border-radius: 6px; background: #3a3a3d; font-size: 12px; white-space: nowrap; }
+  .seg { display: inline-flex; background: #3a3a3d; border-radius: 7px; padding: 2px; }
+  .seg span { padding: 3px 11px; border-radius: 5px; cursor: pointer; font-size: 12px; user-select: none; }
+  .seg span.on { background: #636366; color: #fff; }
+  .tg { width: 34px; height: 20px; border-radius: 10px; background: #48484a; position: relative; cursor: pointer; flex: none; transition: background .2s; }
+  .tg::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .tg.on { background: #30d158; } .tg.on::after { left: 16px; }
+  .sw-row { display: flex; gap: 7px; }
+  .swatch { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(0,0,0,.3); }
+  .swatch.on { border-color: #fff; }
+  input[type=range] { width: 140px; accent-color: var(--acc); }
+  .chip { display: inline-block; padding: 2px 8px; margin: 2px 4px 2px 0; border-radius: 10px; background: #3a3a3d; font-size: 12px; }
+  .meter { width: 140px; height: 6px; border-radius: 3px; background: #3a3a3d; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 30%; background: #30d158; transition: width .08s; }
+  .ok { color: #30d158; } .hist { font-size: 12.5px; } .hist small { color: #8e8e93; display: block; }
+  .btn { padding: 3px 10px; border-radius: 6px; background: #48484a; font-size: 12px; }
+
+  /* Live preview of the indicator */
+  .pv { position: relative; height: 150px; border-radius: 9px; overflow: hidden; margin-bottom: 14px; border: 1px solid #343437;
+    background: radial-gradient(120% 120% at 20% 0%, #3b4a7a 0%, #1f2440 50%, #12131f 100%); }
+  .pv .mb { position: absolute; inset: 0 0 auto 0; height: 16px; background: rgba(20,20,28,.55); }
+  .pv .nt { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 70px; height: 16px; background: #000; border-radius: 0 0 8px 8px; z-index: 2; }
+  .pv .fld { position: absolute; left: 12%; width: 46%; bottom: 46px; height: 22px; border-radius: 6px; background: #383a40;
+    font-size: 11px; color: #f2f3f5; display: flex; align-items: center; padding: 0 8px; }
+  .pv .fld::after { content: ""; width: 1px; height: 12px; background: #fff; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .pos { position: absolute; z-index: 3; transform: translateX(-50%); left: 50%; transition: all .3s ease; }
+  .pos.p-bottom { bottom: 10px; } .pos.p-top { top: 22px; } .pos.p-cursor { left: 40%; bottom: 74px; }
+  .ind { display: flex; align-items: center; justify-content: center; gap: 2px; background: var(--bg); border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 4px 14px rgba(0,0,0,.45); transform: scale(var(--s)); transition: all .3s ease; position: relative; }
+  .ind .bars { display: flex; align-items: center; gap: 2px; }
+  .ind .bars span { width: 2px; height: 14px; border-radius: 1px; background: var(--bar); }
+  .ind.st-pill { height: 24px; padding: 0 12px; border-radius: 12px; }
+  .ind.st-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--bar); border: 0; }
+  .ind.st-dot .bars { display: none; }
+  .pos.st-notch { top: 0 !important; bottom: auto !important; left: 50% !important; }
+  .ind.st-notch { height: 24px; padding: 0 14px 0 26px; border-radius: 0 0 12px 12px; border: 0; background: #000; transform-origin: top center; }
+  .ind.st-notch::before { content: ""; position: absolute; left: 11px; width: 6px; height: 6px; border-radius: 50%; background: #ff5f57; }
+  .ind.glass { background: rgba(40,40,48,.55); backdrop-filter: blur(8px); }
+  .ind.light { --bg: #f4f4f6; border-color: rgba(0,0,0,.1); }
+  .words { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; padding: 3px 8px; border-radius: 6px;
+    background: rgba(11,11,12,.72); color: rgba(244,239,230,.9); bottom: calc(100% + 6px); transition: opacity .3s; }
+  .pos.st-notch .words { bottom: auto; top: calc(100% + 6px); }
+  .words.off { opacity: 0; }
+</style>
+
+<h2>Settings with a sidebar</h2>
+<p class="subtitle">Click through the categories on the left. Settings marked <span class="new" style="margin:0">new</span> don't exist yet. On Indicator, the preview updates as you change things. Tell me what to add, cut or move.</p>
+
+<div class="sw" id="sw">
+  <div class="side">
+    <div class="lights"><i></i><i></i><i></i></div>
+    <div class="search">⌕ Search</div>
+    <div class="nav" data-p="general"><span class="ic" style="background:#8e8e93">⚙</span>General</div>
+    <div class="nav" data-p="shortcut"><span class="ic" style="background:#5e5ce6">⌘</span>Shortcut</div>
+    <div class="nav on" data-p="indicator"><span class="ic" style="background:#ff375f">◐</span>Indicator</div>
+    <div class="nav" data-p="mic"><span class="ic" style="background:#ff9f0a">🎙</span>Microphone</div>
+    <div class="nav" data-p="speech"><span class="ic" style="background:#30d158">Aa</span>Speech</div>
+    <div class="sep"></div>
+    <div class="nav" data-p="dictionary"><span class="ic" style="background:#bf5af2">📖</span>Dictionary</div>
+    <div class="nav" data-p="snippets"><span class="ic" style="background:#64d2ff">✂</span>Snippets</div>
+    <div class="nav" data-p="apps"><span class="ic" style="background:#0a84ff">▦</span>Apps</div>
+    <div class="sep"></div>
+    <div class="nav" data-p="history"><span class="ic" style="background:#ac8e68">↺</span>History</div>
+    <div class="nav" data-p="privacy"><span class="ic" style="background:#636366">🔒</span>Privacy &amp; Permissions</div>
+    <div class="nav" data-p="about"><span class="ic" style="background:#48484a">ⓘ</span>About</div>
+  </div>
+
+  <div class="main">
+    <div class="pane" data-p="general"><h2>General</h2>
+      <div class="group">
+        <div class="row"><div class="lbl">Open Sotto at login<span></span></div><div class="tg on"></div></div>
+        <div class="row"><div class="lbl"><span>Show icon in menu bar <span class="new">new</span></span></div><div class="tg on"></div></div>
+        <div class="row"><div class="lbl"><span>Sounds <span class="new">new</span></span><small>A soft click when listening starts and stops</small></div><div class="sel">Soft ▾</div></div>
+        <div class="row"><div class="lbl"><span>Language <span class="new">new</span></span></div><div class="sel">English (Australia) ▾</div></div>
+      </div></div>
+
+    <div class="pane" data-p="shortcut"><h2>Shortcut</h2>
+      <div class="group">
+        <div class="row"><div class="lbl"><span>Dictation key <span class="new">new</span></span><small>Right ⌘, Right ⌥, Fn/🌐, or any key you record</small></div><div class="sel">Right ⌘ ▾</div></div>
+        <div class="row"><div class="lbl">Hold to talk</div><div class="tg on"></div></div>
+        <div class="row"><div class="lbl">Double-tap to keep listening</div><div class="tg on"></div></div>
+        <div class="row"><div class="lbl"><span>Stop hands-free after silence <span class="new">new</span></span></div><div class="sel">Never ▾</div></div>
+        <div class="row"><div class="lbl">Cancel</div><div class="sel">Esc</div></div>
+        <div class="row"><div class="lbl">Extra chord</div><div class="btn">Record…</div></div>
+      </div></div>
+
+    <div class="pane on" data-p="indicator"><h2>Indicator</h2>
+      <div class="pv"><div class="mb"></div><div class="nt"></div><div class="fld">keen for a servo run this</div>
+        <div class="pos p-bottom st-pill" id="pos"><div class="words" id="words"></div>
+          <div class="ind st-pill" id="ind" style="--s:1;--bar:#f4efe6;--bg:#0b0b0c"><div class="bars" id="bars"></div></div></div></div>
+      <div class="group">
+        <div class="row"><div class="lbl">Style</div><div class="seg" data-k="style"><span class="on" data-v="pill">Pill</span><span data-v="notch">Notch</span><span data-v="dot">Dot</span></div></div>
+        <div class="row" id="posrow"><div class="lbl"><span>Position <span class="new">new</span></span></div><div class="seg" data-k="pos"><span class="on" data-v="bottom">Bottom</span><span data-v="top">Top</span><span data-v="cursor">At cursor</span></div></div>
+        <div class="row"><div class="lbl"><span>Size <span class="new">new</span></span></div><input type="range" min="0.8" max="1.5" step="0.05" value="1" id="size"></div>
+        <div class="row"><div class="lbl"><span>Bar colour <span class="new">new</span></span></div><div class="sw-row" id="colours">
+          <span class="swatch on" style="background:#f4efe6" data-c="#f4efe6"></span><span class="swatch" style="background:#ffffff" data-c="#ffffff"></span>
+          <span class="swatch" style="background:#5ac8fa" data-c="#5ac8fa"></span><span class="swatch" style="background:#7ee0a1" data-c="#7ee0a1"></span>
+          <span class="swatch" style="background:#ff7eb6" data-c="#ff7eb6"></span><span class="swatch" style="background:#ffb340" data-c="#ffb340"></span></div></div>
+        <div class="row"><div class="lbl"><span>Background <span class="new">new</span></span></div><div class="seg" data-k="bg"><span class="on" data-v="dark">Dark</span><span data-v="glass">Glass</span><span data-v="light">Light</span></div></div>
+        <div class="row"><div class="lbl"><span>Show words as you talk</span><small>What Sotto thinks it heard, before it types</small></div><div class="tg" id="wordsTg"></div></div>
+        <div class="row"><div class="lbl"><span>Show on <span class="new">new</span></span></div><div class="sel">Screen with the cursor ▾</div></div>
+      </div></div>
+
+    <div class="pane" data-p="mic"><h2>Microphone</h2>
+      <div class="group">
+        <div class="row"><div class="lbl">Input</div><div class="sel">Kian's AirPods Max ▾</div></div>
+        <div class="row"><div class="lbl"><span>Level <span class="new">new</span></span></div><div class="meter"><i id="meter"></i></div></div>
+        <div class="row"><div class="lbl">Keep the first syllable<small>Holds the last 300 ms in memory so the first word isn't cut off</small></div><div class="tg on"></div></div>
+        <div class="row"><div class="lbl"><span>Use the Mac's mic when AirPods are in <span class="new">new</span></span><small>Stops AirPods dropping to call quality while you dictate</small></div><div class="tg on"></div></div>
+        <div class="row"><div class="lbl"><span>Lower music while dictating <span class="new">new</span></span></div><div class="tg on"></div></div>
+      </div></div>
+
+    <div class="pane" data-p="speech"><h2>Speech</h2>
+      <div class="group">
+        <div class="row"><div class="lbl"><span>Model <span class="new">new</span></span><small>Pick the one that hears your accent best</small></div><div class="sel">Parakeet v2 · English ▾</div></div>
+        <div class="row"><div class="lbl"><span>Spelling <span class="new">new</span></span></div><div class="seg"><span class="on">Australian</span><span>British</span><span>American</span></div></div>
+        <div class="row"><div class="lbl">Mode</div><div class="seg"><span class="on">Automatic</span><span>Prose</span><span>Literal</span></div></div>
+        <div class="row"><div class="lbl">Remove “um” and “uh”</div><div class="tg on"></div></div>
+        <div class="row"><div class="lbl"><span>Keep swearing as said <span class="new">new</span></span></div><div class="tg on"></div></div>
+      </div></div>
+
+    <div class="pane" data-p="dictionary"><h2>Dictionary</h2>
+      <div class="gh">Your words</div>
+      <div class="group"><div class="row"><div><span class="chip">my G</span><span class="chip">arvo</span><span class="chip">servo</span><span class="chip">reckon</span><span class="chip">Sotto</span><span class="chip">T3 Code</span></div><div class="btn">Add</div></div></div>
+      <div class="gh">Spellings</div>
+      <div class="group">
+        <div class="row"><div class="lbl">“maggie” → my G</div><div class="btn">Remove</div></div>
+        <div class="row"><div class="lbl"><span>Learn from my corrections <span class="new">new</span></span><small>When you fix a word after Sotto types it, remember the fix</small></div><div class="tg on"></div></div>
+      </div></div>
+
+    <div class="pane" data-p="snippets"><h2>Snippets <span class="new">new</span></h2>
+      <div class="group">
+        <div class="row"><div class="lbl">“my address”<small>12 Example Street, Perth WA 6000</small></div><div class="btn">Edit</div></div>
+        <div class="row"><div class="lbl">“sign off”<small>Cheers, Kian</small></div><div class="btn">Edit</div></div>
+        <div class="row"><div class="lbl" style="color:#8e8e93">Say a phrase, get a block of text</div><div class="btn">Add</div></div>
+      </div></div>
+
+    <div class="pane" data-p="apps"><h2>Apps <span class="new">new</span></h2>
+      <div class="gh">How Sotto behaves in each app</div>
+      <div class="group">
+        <div class="row"><div class="lbl">Discord</div><div class="sel">Prose · casual ▾</div></div>
+        <div class="row"><div class="lbl">T3 Code / Codex</div><div class="sel">Prose ▾</div></div>
+        <div class="row"><div class="lbl">Terminal</div><div class="sel">Literal ▾</div></div>
+        <div class="row"><div class="lbl" style="color:#8e8e93">Everything else follows Speech → Mode</div><div class="btn">Add app</div></div>
+      </div></div>
+
+    <div class="pane" data-p="history"><h2>History</h2>
+      <div class="group"><div class="row"><div class="lbl">Keep</div><div class="seg"><span>Off</span><span class="on">24 hours</span><span>7 days <span class="new" style="margin-left:2px">new</span></span><span>Forever <span class="new" style="margin-left:2px">new</span></span></div></div></div>
+      <div class="group">
+        <div class="row hist"><div>Are we able to get similar models?<small>Hermes · 4:12 pm</small></div><div class="btn">Copy</div></div>
+        <div class="row hist"><div>yo what's up my G<small>Codex · 4:13 pm</small></div><div class="btn">Copy</div></div>
+      </div></div>
+
+    <div class="pane" data-p="privacy"><h2>Privacy &amp; Permissions</h2>
+      <div class="group">
+        <div class="row"><div class="lbl">Microphone</div><div class="ok">● Allowed</div></div>
+        <div class="row"><div class="lbl">Accessibility<small>Lets Sotto hear the shortcut and type for you</small></div><div class="ok">● Allowed</div></div>
+      </div>
+      <div class="group"><div class="row"><div class="lbl">Audio is never saved, and nothing leaves this Mac.<small>The only download is the speech model.</small></div></div></div></div>
+
+    <div class="pane" data-p="about"><h2>About</h2>
+      <div class="group"><div class="row"><div class="lbl">Sotto 0.1.0</div></div>
+        <div class="row"><div class="lbl">Speech model: NVIDIA Parakeet TDT 0.6B v2 (CC-BY-4.0), via FluidAudio</div></div></div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const sw = document.getElementById('sw');
+  sw.querySelectorAll('.nav').forEach(function (n) {
+    n.addEventListener('click', function () {
+      sw.querySelectorAll('.nav').forEach(function (x) { x.classList.toggle('on', x === n); });
+      sw.querySelectorAll('.pane').forEach(function (p) { p.classList.toggle('on', p.dataset.p === n.dataset.p); });
+    });
+  });
+  sw.querySelectorAll('.tg').forEach(function (t) { t.addEventListener('click', function () { t.classList.toggle('on'); }); });
+
+  const pos = document.getElementById('pos'), ind = document.getElementById('ind'), words = document.getElementById('words');
+  const state = { style: 'pill', pos: 'bottom', bg: 'dark' };
+  function apply() {
+    pos.className = 'pos p-' + state.pos + ' st-' + state.style;
+    ind.className = 'ind st-' + state.style + (state.bg === 'glass' ? ' glass' : '') + (state.bg === 'light' ? ' light' : '');
+    ind.style.setProperty('--bg', state.bg === 'light' ? '#f4f4f6' : '#0b0b0c');
+    document.getElementById('posrow').style.opacity = state.style === 'notch' ? .4 : 1;
+  }
+  sw.querySelectorAll('.seg').forEach(function (seg) {
+    seg.querySelectorAll('span[data-v], span').forEach(function (s) {
+      s.addEventListener('click', function () {
+        seg.querySelectorAll(':scope > span').forEach(function (x) { x.classList.toggle('on', x === s); });
+        if (seg.dataset.k && s.dataset.v) { state[seg.dataset.k] = s.dataset.v; apply(); }
+      });
+    });
+  });
+  document.getElementById('size').addEventListener('input', function (e) { ind.style.setProperty('--s', e.target.value); });
+  document.getElementById('colours').querySelectorAll('.swatch').forEach(function (c) {
+    c.addEventListener('click', function () {
+      document.querySelectorAll('#colours .swatch').forEach(function (x) { x.classList.toggle('on', x === c); });
+      ind.style.setProperty('--bar', c.dataset.c);
+    });
+  });
+  const wordsTg = document.getElementById('wordsTg');
+
+  const bars = document.getElementById('bars'), N = 12;
+  for (let i = 0; i < N; i++) bars.appendChild(document.createElement('span'));
+  const text = "yo what's up my G, keen for a servo run this arvo?".split(' ');
+  const meter = document.getElementById('meter');
+  let level = 0, target = 0, next = 0; const t0 = performance.now();
+  function frame(now) {
+    if (now > next) { target = Math.random() < 0.2 ? 0.1 : 0.35 + Math.random() * 0.65; next = now + 80 + Math.random() * 170; }
+    level += (target - level) * 0.22;
+    Array.prototype.forEach.call(bars.children, function (b, i) {
+      const mid = (N - 1) / 2, shape = 1 - (Math.abs(i - mid) / mid) * 0.55;
+      b.style.transform = 'scaleY(' + Math.max(0.14, level * shape * (0.65 + Math.random() * 0.55)).toFixed(2) + ')';
+    });
+    if (state.style === 'dot') ind.style.boxShadow = '0 0 ' + (4 + level * 14).toFixed(0) + 'px ' + getComputedStyle(ind).getPropertyValue('--bar');
+    else ind.style.boxShadow = '';
+    const heard = Math.floor(((now - t0) % 5200) / 5200 * text.length) + 1;
+    words.textContent = text.slice(0, heard).join(' ');
+    words.classList.toggle('off', !wordsTg.classList.contains('on'));
+    meter.style.width = (10 + level * 85).toFixed(0) + '%';
+    requestAnimationFrame(frame);
+  }
+  apply(); requestAnimationFrame(frame);
+})();
+</script>

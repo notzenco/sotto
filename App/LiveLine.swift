@@ -23,6 +23,12 @@ final class LiveLine {
 
     private nonisolated let ingress = Mutex(Ingress())
     private var token: UUID?
+    // Retained by finish across suspension; a new session can never replace its words.
+    private final class SessionResult {
+        var text = ""
+    }
+    private var sessionResult = SessionResult()
+    private var sessionResults: [UUID: SessionResult] = [:]
     private var committed = ""
     private var volatile = ""
     private var analyzer: SpeechAnalyzer?
@@ -35,9 +41,13 @@ final class LiveLine {
     private var converterSource: AVAudioFormat?
     private var modernConverter: AnyObject?
 
-    func start() async {
-        if token != nil { cancel() }
-        let id = UUID()
+    func start(_ id: UUID) async {
+        if token != nil { cancelSession() }
+        sessionResult = SessionResult()
+        sessionResults[id] = sessionResult
+        committed = ""
+        volatile = ""
+        publish()
         token = id
         ingress.withLock {
             $0.token = id
@@ -82,29 +92,38 @@ final class LiveLine {
         }
     }
 
-    func finish() async {
-        guard let id = token else { return }
+    func finish(_ id: UUID) async -> String {
+        guard let result = sessionResults[id] else { return "" }
+        defer { sessionResults.removeValue(forKey: id) }
+        guard token == id else { return result.text }
         ingress.withLock { $0.accepting = false }
         await setupTask?.value
-        guard token == id else { return }
+        guard token == id else { return result.text }
         drain(id)
         if #available(macOS 27, *), let modern = modernConverter as? AnalyzerInputConverter {
             do {
                 for input in try modern.flush() { continuation?.yield(input) }
             } catch {
                 disable(id)
-                return
+                return result.text
             }
         }
         continuation?.finish()
         await analysisTask?.value
-        guard token == id else { return }
+        guard token == id else { return result.text }
         await resultsTask?.value
-        guard token == id else { return }
+        guard token == id else { return result.text }
         releaseSession()
+        return result.text
     }
 
-    func cancel() {
+    func cancel(_ id: UUID) {
+        sessionResults.removeValue(forKey: id)
+        guard token == id else { return }
+        cancelSession()
+    }
+
+    private func cancelSession() {
         let oldAnalyzer = analyzer
         token = nil
         ingress.withLock {
@@ -120,6 +139,7 @@ final class LiveLine {
         if let oldAnalyzer {
             Task { await oldAnalyzer.cancelAndFinishNow() }
         }
+        sessionResult = SessionResult()
         committed = ""
         volatile = ""
         publish()
@@ -132,9 +152,6 @@ final class LiveLine {
             releaseSession()
             return
         }
-        committed = ""
-        volatile = ""
-        publish()
         guard token == id else { return }
         let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
         do {
@@ -265,7 +282,7 @@ final class LiveLine {
 
     private func disable(_ id: UUID) {
         guard token == id else { return }
-        cancel()
+        cancelSession()
     }
 
     private func releaseSession() {
@@ -288,6 +305,7 @@ final class LiveLine {
 
     private func publish() {
         text = committed + volatile
+        sessionResult.text = text
         onChange?(text)
     }
 }

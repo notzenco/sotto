@@ -1,18 +1,6 @@
 import Foundation
 import SottoCore
 
-struct AppSettings: Codable, Equatable, Sendable {
-    var keepFirstSyllable: Bool = true
-    /// Zero means history is off. Twenty-four keeps text for a day on this Mac.
-    var historyHours: Int = 0
-    /// Nil follows the focused app. A value forces Prose or Literal.
-    var modeOverride: DictationMode? = nil
-    var inputDeviceID: UInt32? = nil
-    var dictationCount: Int = 0
-
-    var automaticMode: Bool { modeOverride == nil }
-}
-
 struct HistoryEntry: Codable, Equatable, Sendable, Identifiable {
     var id: UUID
     var date: Date
