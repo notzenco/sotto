@@ -69,7 +69,8 @@ actor ParakeetFamilyEngine: SpeechEngine {
     /// FluidAudio's download fraction covers 0...0.5 of a repo load, and every model file it loads
     /// reports a cached download again before compiling. Compiling is reported once, as nil, and nothing after it.
     /// Byte updates arrive per network write, so the fraction is only passed on when it moves by 0.01.
-    private static func progressHandler(_ progress: @escaping @Sendable (Double?) -> Void) -> ProgressHandler {
+    /// CohereEngine shares it: `ModelHub.download` weights its fraction the same way.
+    static func progressHandler(_ progress: @escaping @Sendable (Double?) -> Void) -> ProgressHandler {
         let gate = ProgressGate()
         return { update in
             let report: Double?? = gate.state.withLock { state in
