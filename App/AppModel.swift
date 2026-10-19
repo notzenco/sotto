@@ -46,6 +46,9 @@ final class AppModel {
     private var levelWatchers: Set<LevelWatcher> = []
     private let live = LiveLine()
     private let inserter = TextInserter()
+    @ObservationIgnored private lazy var fixWatcher = FixWatcher(inserter: inserter) { [weak self] fix in
+        self?.recordLearning(fix, source: .fix, clipID: nil)
+    }
     private let hotkeys = HotkeyMonitor()
     private let indicator = IndicatorPanel()
     private let menu = MenuBarController()
@@ -502,6 +505,7 @@ final class AppModel {
             postRollTake = nil
         }
         if !engineRunning { startEngine() }
+        fixWatcher.check()
         captured = inserter.captureFocus()
         capturedDomain = inserter.lastDomain
         capture.beginUtterance()
@@ -605,6 +609,7 @@ final class AppModel {
         switch result {
         case .inserted:
             present(.done, take: take)
+            fixWatcher.watch()
         case .kept(let problem):
             present(.problem(problem), take: take)
         case .cancelled:

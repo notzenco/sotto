@@ -14,6 +14,7 @@
 		1C5346D389F5F7EF42676B92 /* SottoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */; };
 		231CDDE5AE03832A8CAB78F2 /* EngineFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9713B7DFD3531EC7590B781B /* EngineFactory.swift */; };
 		24243F453447EF048555ABDC /* PreRoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC9DFB9E59867B138ECB963 /* PreRoll.swift */; };
+		293C157BCD277114BDBA49F8 /* FixWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AE681EF1024506DC3B8D42 /* FixWatcher.swift */; };
 		326413254DC5E4A015C89AE5 /* LearningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44302E1AEC96862B3CA4CC7F /* LearningTests.swift */; };
 		32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0074DE2D414298885D2E37C /* AppModel.swift */; };
 		40B938684CBBFD84C2A42B77 /* ClipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CDD4C784C04D25D22AA8157 /* ClipStore.swift */; };
@@ -104,6 +105,7 @@
 		0FCA0A63EF32581C15E8D13F /* IndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorView.swift; sourceTree = "<group>"; };
 		1091F9EF39DB74A10816CB18 /* SpellingConverterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellingConverterTests.swift; sourceTree = "<group>"; };
 		12A237EBD0DD20CBB88E92A9 /* SpeechCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechCatalogTests.swift; sourceTree = "<group>"; };
+		13AE681EF1024506DC3B8D42 /* FixWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixWatcher.swift; sourceTree = "<group>"; };
 		15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SottoApp.swift; sourceTree = "<group>"; };
 		1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		1A5739DF1027512112F7341E /* AppIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIdentity.swift; sourceTree = "<group>"; };
@@ -305,6 +307,7 @@
 				E0074DE2D414298885D2E37C /* AppModel.swift */,
 				9E71DF31D84CE231B9FA7FA5 /* AudioCapture.swift */,
 				1CDD4C784C04D25D22AA8157 /* ClipStore.swift */,
+				13AE681EF1024506DC3B8D42 /* FixWatcher.swift */,
 				7FE419E15D6C5EB42A0D6D49 /* HotkeyMonitor.swift */,
 				2CB0D3AFB6135CF0F2A5770D /* LiveLine.swift */,
 				5A4870298925DCD619A1F38B /* MainMenu.swift */,
@@ -462,6 +465,7 @@
 				40B938684CBBFD84C2A42B77 /* ClipStore.swift in Sources */,
 				F425A95F81A04B7E4E385CDB /* CohereEngine.swift in Sources */,
 				231CDDE5AE03832A8CAB78F2 /* EngineFactory.swift in Sources */,
+				293C157BCD277114BDBA49F8 /* FixWatcher.swift in Sources */,
 				8502C849CB33F2338B1FBBF5 /* HintBooster.swift in Sources */,
 				8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */,
 				0E0C6086CA272055FE3F67B7 /* IndicatorPane.swift in Sources */,
