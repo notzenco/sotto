@@ -14,6 +14,7 @@
 		32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0074DE2D414298885D2E37C /* AppModel.swift */; };
 		37E242D50D3BCD70FFFAD52B /* ParakeetEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A4CDE6531DDDA4BF1193E1 /* ParakeetEngine.swift */; };
 		42A582125F7EA187A16962E3 /* Shortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2972BAE3073E24FE76A2C05F /* Shortcuts.swift */; };
+		4878233232B096BD8C6EA6A1 /* InsertJoinTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 778BA147FB881AB9549E3F0F /* InsertJoinTests.swift */; };
 		48F5731364F01F2AD65BE690 /* Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5889C01D01EA2919CEEE8F /* Indicator.swift */; };
 		4E9DF3945EF2468FF1D50DA5 /* RightCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6246DCF13B70F582CB595FEC /* RightCommand.swift */; };
 		597A6CF4E6F21600AF45599E /* TakeLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03DCE3321FB5D54B21666AF9 /* TakeLedger.swift */; };
@@ -42,6 +43,7 @@
 		C6DF9CAE74DB36CF14F177E7 /* InsertPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92F56757B510A190839C4BB /* InsertPlanner.swift */; };
 		C726C9C1C42157BDA8F583A9 /* MainMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A4870298925DCD619A1F38B /* MainMenu.swift */; };
 		C814CF93E593ED55C76B17EA /* SettingsActivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB4B7EDCD7AE1E97CDB6CB6D /* SettingsActivityTests.swift */; };
+		CE9E4EE9A16E55C2A2186108 /* InsertJoin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EF9FD846FD0461D6FBD93B9 /* InsertJoin.swift */; };
 		D5A79C85D00BF3982849B454 /* TranscriptFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5725C9D695FB3DFAFE8BF054 /* TranscriptFormatter.swift */; };
 		D8041B38DD0ED190B1374C88 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8D7FA84FB1A41CDE07EBDF5A /* KeyboardShortcuts */; };
 		DB556DB8D5385272C0902E99 /* SottoCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F9A36D846BD703AB4954B1B /* SottoCoreTests.swift */; };
@@ -77,6 +79,7 @@
 /* Begin PBXFileReference section */
 		03BC7AF4D922FBD8E6583E67 /* IndicatorBars.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorBars.swift; sourceTree = "<group>"; };
 		03DCE3321FB5D54B21666AF9 /* TakeLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeLedger.swift; sourceTree = "<group>"; };
+		0EF9FD846FD0461D6FBD93B9 /* InsertJoin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertJoin.swift; sourceTree = "<group>"; };
 		0FCA0A63EF32581C15E8D13F /* IndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorView.swift; sourceTree = "<group>"; };
 		15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SottoApp.swift; sourceTree = "<group>"; };
 		1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
@@ -95,6 +98,7 @@
 		5BC51D3A5933645C7B14C2D9 /* Stores.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stores.swift; sourceTree = "<group>"; };
 		5CA740A9B9A7B3FE44E22634 /* TextInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserter.swift; sourceTree = "<group>"; };
 		6246DCF13B70F582CB595FEC /* RightCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightCommand.swift; sourceTree = "<group>"; };
+		778BA147FB881AB9549E3F0F /* InsertJoinTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertJoinTests.swift; sourceTree = "<group>"; };
 		7F9A36D846BD703AB4954B1B /* SottoCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SottoCoreTests.swift; sourceTree = "<group>"; };
 		7FE419E15D6C5EB42A0D6D49 /* HotkeyMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyMonitor.swift; sourceTree = "<group>"; };
 		87B9140A6F898B43FFB6F88F /* MenuIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuIcon.swift; sourceTree = "<group>"; };
@@ -153,6 +157,7 @@
 				32E03B5BCB98F26F4092A741 /* IndicatorBarsTests.swift */,
 				ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */,
 				D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */,
+				778BA147FB881AB9549E3F0F /* InsertJoinTests.swift */,
 				E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */,
 				EB4B7EDCD7AE1E97CDB6CB6D /* SettingsActivityTests.swift */,
 				1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */,
@@ -181,6 +186,7 @@
 				8E5889C01D01EA2919CEEE8F /* Indicator.swift */,
 				03BC7AF4D922FBD8E6583E67 /* IndicatorBars.swift */,
 				C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */,
+				0EF9FD846FD0461D6FBD93B9 /* InsertJoin.swift */,
 				D92F56757B510A190839C4BB /* InsertPlanner.swift */,
 				BF82C7764642BCB684DCED3A /* LevelMeter.swift */,
 				1FC9DFB9E59867B138ECB963 /* PreRoll.swift */,
@@ -413,6 +419,7 @@
 				BE45AEA6BE38E885A99C55AA /* IndicatorBarsTests.swift in Sources */,
 				C084A5CBA85C6FC0A05585BB /* IndicatorLayoutTests.swift in Sources */,
 				E0BB6D9B30FF25AEB59AFF85 /* IndicatorTests.swift in Sources */,
+				4878233232B096BD8C6EA6A1 /* InsertJoinTests.swift in Sources */,
 				B949D42AB2779695D3E22A54 /* LevelMeterTests.swift in Sources */,
 				C814CF93E593ED55C76B17EA /* SettingsActivityTests.swift in Sources */,
 				E45626642DBF24EA8F24EE78 /* SettingsTests.swift in Sources */,
@@ -431,6 +438,7 @@
 				48F5731364F01F2AD65BE690 /* Indicator.swift in Sources */,
 				EE8A4B8E715D4A2760EAB6D7 /* IndicatorBars.swift in Sources */,
 				E180C3A67B7166CF86AB7201 /* IndicatorLayout.swift in Sources */,
+				CE9E4EE9A16E55C2A2186108 /* InsertJoin.swift in Sources */,
 				C6DF9CAE74DB36CF14F177E7 /* InsertPlanner.swift in Sources */,
 				00E468A4C2FBAC018637E0F6 /* LevelMeter.swift in Sources */,
 				24243F453447EF048555ABDC /* PreRoll.swift in Sources */,

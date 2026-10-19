@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import CoreAudio
 import KeyboardShortcuts
+import NaturalLanguage
 import ServiceManagement
 import SottoCore
 import SwiftUI
@@ -515,7 +516,12 @@ final class AppModel {
         let result: InsertResult
         guard takes.allowsInsertion(take) else { return }
         if let snapshot, snapshot.pid != 0 {
-            result = await inserter.insert(formatted, captured: snapshot) { [self] in
+            let before = snapshot.isSecureField || snapshot.secureInput
+                ? nil : inserter.textBeforeCursor(bundleID: snapshot.bundleID)
+            let fitted = InsertJoin.fit(formatted, before: before, mode: mode) { [self] word in
+                keepsCapital(word, in: formatted)
+            }
+            result = await inserter.insert(fitted, captured: snapshot) { [self] in
                 takes.allowsInsertion(take)
             }
         } else {
@@ -541,6 +547,18 @@ final class AppModel {
             LocalStore.save(history: history)
         }
         logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: injected)
+    }
+
+    /// Dictionary spellings and names keep their capital when a dictation continues a sentence.
+    private func keepsCapital(_ word: String, in text: String) -> Bool {
+        if rulebook.replacements.contains(where: { $0.written.split(separator: " ").contains { $0 == word } }) {
+            return true
+        }
+        guard let start = text.range(of: word)?.lowerBound else { return false }
+        let tagger = NLTagger(tagSchemes: [.nameType])
+        tagger.string = text
+        let tag = tagger.tag(at: start, unit: .word, scheme: .nameType).0
+        return tag == .personalName || tag == .placeName || tag == .organizationName
     }
 
     private func present(_ phase: IndicatorPhase, take: TakeLedger.ID) {
