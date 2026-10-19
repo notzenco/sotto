@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00E468A4C2FBAC018637E0F6 /* LevelMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF82C7764642BCB684DCED3A /* LevelMeter.swift */; };
+		0E0C6086CA272055FE3F67B7 /* IndicatorPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAAC779A124F6D45D82BB6A /* IndicatorPane.swift */; };
 		1C5346D389F5F7EF42676B92 /* SottoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */; };
 		24243F453447EF048555ABDC /* PreRoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC9DFB9E59867B138ECB963 /* PreRoll.swift */; };
 		32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0074DE2D414298885D2E37C /* AppModel.swift */; };
@@ -104,6 +105,7 @@
 		C1B25E6714CF4F0556E5527F /* SottoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SottoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorLayout.swift; sourceTree = "<group>"; };
 		CB1AC3A3F36B48F542D76655 /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
+		CEAAC779A124F6D45D82BB6A /* IndicatorPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorPane.swift; sourceTree = "<group>"; };
 		D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorTests.swift; sourceTree = "<group>"; };
 		D92F56757B510A190839C4BB /* InsertPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertPlanner.swift; sourceTree = "<group>"; };
 		E0074DE2D414298885D2E37C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
@@ -181,6 +183,7 @@
 		56C2C0B5812A9FE87AD52BCB /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				CEAAC779A124F6D45D82BB6A /* IndicatorPane.swift */,
 				FC97FED2709B3D89E7214074 /* SettingsPanes.swift */,
 				2868B3EAC7F19260B6F05E6D /* SettingsView.swift */,
 				B0983FCA9D8EBA83EA2B4201 /* SettingsWindowController.swift */,
@@ -368,6 +371,7 @@
 				6BA0AA7A68B35E9A7996B2C4 /* AudioCapture.swift in Sources */,
 				B8EA527806C11142C8E7889B /* CaretLocator.swift in Sources */,
 				8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */,
+				0E0C6086CA272055FE3F67B7 /* IndicatorPane.swift in Sources */,
 				9ED6EB01579F5DD0F43475E5 /* IndicatorPanel.swift in Sources */,
 				E2203C8C118A67B37BF1B7EA /* IndicatorView.swift in Sources */,
 				F63FAD9095740CCE88CC4DC8 /* LiveLine.swift in Sources */,

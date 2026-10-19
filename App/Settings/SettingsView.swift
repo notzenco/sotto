@@ -92,10 +92,7 @@ struct SettingsView: View {
         case .shortcut:
             ShortcutSettingsPane(model: model)
         case .indicator:
-            Form {
-                Text("Indicator settings arrive in the next step")
-            }
-            .formStyle(.grouped)
+            IndicatorPane(model: model)
         case .microphone:
             MicrophoneSettingsPane(model: model)
         case .speech:
