@@ -17,6 +17,7 @@ enum LevelWatcher: Hashable {
 final class AppModel {
     var settings: AppSettings
     var rulebook: Rulebook
+    var lexicon: Lexicon
     var history: [HistoryEntry]
     var listening = false
     var inputLevel: Float = 0
@@ -28,6 +29,7 @@ final class AppModel {
     var microphones: [InputDevice] = []
     var lastTranscript = ""
     let library: ModelLibrary
+    let clips: ClipStore
 
     var modelPhase: ModelPhase { library.typingPhase }
 
@@ -68,8 +70,10 @@ final class AppModel {
         let settings = LocalStore.loadSettings()
         self.settings = settings
         rulebook = LocalStore.loadRulebook()
+        lexicon = LocalStore.loadLexicon()
         history = LocalStore.loadHistory()
         library = ModelLibrary(typingModel: settings.typingModel, spelling: settings.spelling)
+        clips = ClipStore(directory: LocalStore.clipsDirectory)
         indicator.apply(settings.indicator)
         indicator.onHide = { [weak self] in
             self?.setLevelWatching(false, for: .indicator)
@@ -120,6 +124,10 @@ final class AppModel {
         watchHotkey()
         library.refreshDownloadStates()
         Task { await library.prepareTypingModel() }
+        clips.prune(now: Date())
+        // Builds the spelling tables now rather than during the first dictation.
+        let spelling = settings.spelling
+        Task.detached(priority: .utility) { _ = SpellingConverter.convert("color", to: spelling) }
     }
 
     func setLevelWatching(_ on: Bool, for watcher: LevelWatcher) {
@@ -383,6 +391,55 @@ final class AppModel {
         LocalStore.save(rulebook: rulebook)
     }
 
+    func setKeepAudio(_ on: Bool, deleteExisting: Bool) {
+        settings.keepAudio = on
+        LocalStore.save(settings: settings)
+        if deleteExisting { clips.deleteAll() }
+    }
+
+    func deleteAllClips() {
+        clips.deleteAll()
+    }
+
+    func setSpelling(_ variety: SpellingVariety) {
+        settings.spelling = variety
+        LocalStore.save(settings: settings)
+        library.setSpelling(variety)
+    }
+
+    /// Typing stays on the current model until the new one is ready.
+    func setTypingModel(_ id: SpeechModelID) {
+        settings.typingModel = id
+        LocalStore.save(settings: settings)
+        Task { await library.select(id) }
+    }
+
+    /// Nil turns the teacher off.
+    func setTeacherModel(_ id: SpeechModelID?) {
+        settings.teacherModel = id
+        LocalStore.save(settings: settings)
+    }
+
+    func addYourWord(_ word: String) {
+        lexicon = lexicon.addingYourWord(word)
+        LocalStore.save(lexicon: lexicon)
+    }
+
+    func removeYourWord(_ word: String) {
+        lexicon = lexicon.removingYourWord(word)
+        LocalStore.save(lexicon: lexicon)
+    }
+
+    func deleteLearnedWord(id: UUID) {
+        lexicon = lexicon.deleting(id: id)
+        LocalStore.save(lexicon: lexicon)
+    }
+
+    func recordLearning(_ s: Substitution, source: LearnSource, clipID: UUID?) {
+        lexicon = lexicon.recording(s, source: source, clipID: clipID)
+        LocalStore.save(lexicon: lexicon)
+    }
+
     func openSettings(pane: SettingsPane? = nil) {
         refreshMicrophones()
         if settingsWindowController == nil {
@@ -478,9 +535,13 @@ final class AppModel {
         }
         let audioEnded = Date()
 
-        let transcriptTask = Task { @MainActor () -> String? in
-            guard self.takes.allowsInsertion(take), self.modelPhase == .ready else { return nil }
-            return await self.library.transcribeTyping(samples, hints: [])?.hinted
+        let typingModel = library.typingModel
+        // Apple's engine is the live-caption session, so its final text is the typing model's result.
+        let usesLiveText = typingModel == .appleEnglish
+        let hints = usesLiveText ? [] : lexicon.hintTerms
+        let transcriptTask = Task { @MainActor () -> EngineResult? in
+            guard !usesLiveText, self.takes.allowsInsertion(take), self.modelPhase == .ready else { return nil }
+            return await self.library.transcribeTyping(samples, hints: hints)
         }
         let appleTask = Task { @MainActor () -> String in
             guard self.takes.allowsInsertion(take) else { return "" }
@@ -500,14 +561,21 @@ final class AppModel {
             return
         }
 
-        let raw = transcript ?? (apple.isEmpty ? nil : apple)
-        guard let raw, !raw.isEmpty else {
+        // Without the typing model's result, the live text stands in for both, as Apple's engine produced it.
+        let heard = transcript ?? EngineResult(raw: apple, hinted: apple)
+        let clipModel = transcript == nil ? SpeechModelID.appleEnglish : typingModel
+        guard !heard.hinted.isEmpty else {
             present(.problem(.notHeard), take: take)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
         let mode = settings.modeOverride ?? AppIdentity.defaultMode(bundleID: snapshot?.bundleID, domain: domain)
-        let formatted = rulebook.applying(to: TranscriptFormatter.format(raw, mode: mode))
+        var formatted = TranscriptFormatter.format(heard.hinted, mode: mode)
+        if mode == .prose {
+            formatted = SpellingConverter.convert(formatted, to: settings.spelling)
+        }
+        // The owner's Names win over spelling.
+        formatted = rulebook.applying(to: formatted)
         guard !formatted.isEmpty else {
             present(.problem(.notHeard), take: take)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
@@ -547,6 +615,14 @@ final class AppModel {
             history.removeAll { $0.date < cutoff }
             LocalStore.save(history: history)
         }
+        if settings.keepAudio, !samples.isEmpty {
+            clips.save(samples: samples, record: ClipRecord(
+                date: Date(), bundleID: snapshot?.bundleID, domain: domain,
+                durationSeconds: Double(samples.count) / 16_000, typingModel: clipModel,
+                rawText: heard.raw, hintedText: heard.hinted, typedText: formatted))
+        }
+        // Also while Keep audio is off, so clips kept from before still go after 7 days.
+        clips.prune(now: Date())
         logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: injected)
     }
 

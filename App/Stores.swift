@@ -40,6 +40,25 @@ enum LocalStore {
         encode(history, name: "history.json")
     }
 
+    static func loadLexicon() -> Lexicon {
+        let url = directory.appendingPathComponent("lexicon.json")
+        guard let data = try? Data(contentsOf: url) else { return Lexicon() }
+        if let lexicon = try? JSONDecoder().decode(Lexicon.self, from: data) { return lexicon }
+        // Keep the owner's words aside rather than let the next save overwrite them.
+        let copy = directory.appendingPathComponent("lexicon.unreadable.json")
+        try? FileManager.default.removeItem(at: copy)
+        try? FileManager.default.moveItem(at: url, to: copy)
+        return Lexicon()
+    }
+
+    static func save(lexicon: Lexicon) {
+        encode(lexicon, name: "lexicon.json")
+    }
+
+    static var clipsDirectory: URL {
+        directory.appendingPathComponent("Clips", isDirectory: true)
+    }
+
     private static func decode<T: Decodable>(_ type: T.Type, name: String) -> T? {
         let url = directory.appendingPathComponent(name)
         guard let data = try? Data(contentsOf: url) else { return nil }

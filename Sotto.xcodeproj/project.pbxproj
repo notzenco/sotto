@@ -15,6 +15,7 @@
 		24243F453447EF048555ABDC /* PreRoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC9DFB9E59867B138ECB963 /* PreRoll.swift */; };
 		326413254DC5E4A015C89AE5 /* LearningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44302E1AEC96862B3CA4CC7F /* LearningTests.swift */; };
 		32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0074DE2D414298885D2E37C /* AppModel.swift */; };
+		40B938684CBBFD84C2A42B77 /* ClipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CDD4C784C04D25D22AA8157 /* ClipStore.swift */; };
 		42A582125F7EA187A16962E3 /* Shortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2972BAE3073E24FE76A2C05F /* Shortcuts.swift */; };
 		43D44619355D820342FE6D60 /* SpellingConverterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1091F9EF39DB74A10816CB18 /* SpellingConverterTests.swift */; };
 		4878233232B096BD8C6EA6A1 /* InsertJoinTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 778BA147FB881AB9549E3F0F /* InsertJoinTests.swift */; };
@@ -104,6 +105,7 @@
 		1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
 		1A5739DF1027512112F7341E /* AppIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIdentity.swift; sourceTree = "<group>"; };
 		1C7A90A3DFE5F3498F10BD37 /* SpellingTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpellingTable.swift; sourceTree = "<group>"; };
+		1CDD4C784C04D25D22AA8157 /* ClipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipStore.swift; sourceTree = "<group>"; };
 		1FC9DFB9E59867B138ECB963 /* PreRoll.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreRoll.swift; sourceTree = "<group>"; };
 		2868B3EAC7F19260B6F05E6D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		2972BAE3073E24FE76A2C05F /* Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcuts.swift; sourceTree = "<group>"; };
@@ -293,6 +295,7 @@
 			children = (
 				E0074DE2D414298885D2E37C /* AppModel.swift */,
 				9E71DF31D84CE231B9FA7FA5 /* AudioCapture.swift */,
+				1CDD4C784C04D25D22AA8157 /* ClipStore.swift */,
 				7FE419E15D6C5EB42A0D6D49 /* HotkeyMonitor.swift */,
 				2CB0D3AFB6135CF0F2A5770D /* LiveLine.swift */,
 				5A4870298925DCD619A1F38B /* MainMenu.swift */,
@@ -447,6 +450,7 @@
 				32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */,
 				6BA0AA7A68B35E9A7996B2C4 /* AudioCapture.swift in Sources */,
 				B8EA527806C11142C8E7889B /* CaretLocator.swift in Sources */,
+				40B938684CBBFD84C2A42B77 /* ClipStore.swift in Sources */,
 				F425A95F81A04B7E4E385CDB /* CohereEngine.swift in Sources */,
 				231CDDE5AE03832A8CAB78F2 /* EngineFactory.swift in Sources */,
 				8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */,

@@ -140,4 +140,17 @@ final class LearningTests: XCTestCase {
             .addingYourWord("My G").addingYourWord("Sotto")
         XCTAssertEqual(lex.hintTerms, [HintTerm(text: "my G", aliases: ["margie"]), HintTerm(text: "Sotto")])
     }
+
+    func testOlderLexiconFilesDecodeWithDefaults() throws {
+        let id = UUID()
+        let word = """
+        {"id": "\(id.uuidString)", "written": "my G", "heardForms": ["margie"], "sources": ["fix"], "count": 1, "learned": true}
+        """
+        let decoded = try JSONDecoder().decode(LearnedWord.self, from: Data(word.utf8))
+        XCTAssertEqual(decoded, LearnedWord(id: id, written: "my G", heardForms: ["margie"], sources: [.fix],
+                                            count: 1, learned: true))
+
+        let lexicon = try JSONDecoder().decode(Lexicon.self, from: Data(#"{"entries": [\#(word)]}"#.utf8))
+        XCTAssertEqual(lexicon, Lexicon(entries: [decoded]))
+    }
 }

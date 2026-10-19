@@ -51,7 +51,9 @@ struct PrivacySettingsPane: View {
                 }
             }
             Section {
-                Text("Audio is never saved, and nothing leaves this Mac except the speech model download.")
+                Text(model.settings.keepAudio
+                     ? "Audio of each dictation is kept on this Mac for 7 days to improve recognition, and is never sent anywhere. Nothing leaves this Mac except model downloads."
+                     : "Audio is never saved, and nothing leaves this Mac except model downloads.")
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
