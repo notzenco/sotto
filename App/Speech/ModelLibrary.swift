@@ -6,6 +6,7 @@ enum ModelLibraryError: LocalizedError {
     case inUse
     case unavailable
     case busy
+    case builtIn
     case notDownloaded
     case notReady(String)
 
@@ -14,6 +15,7 @@ enum ModelLibraryError: LocalizedError {
         case .inUse: "This model is typing. Choose another model first."
         case .unavailable: "Sotto can't run this model yet."
         case .busy: "This model is downloading or preparing."
+        case .builtIn: "This model is built into macOS."
         case .notDownloaded: "Download this model first."
         case .notReady(let reason): reason
         }
@@ -139,7 +141,9 @@ final class ModelLibrary {
         await release(id)
     }
 
+    /// Refuses Apple's built-in model: macOS keeps its files, so it would only look deleted.
     func delete(_ id: SpeechModelID) async throws {
+        guard SpeechCatalog.info(id).kind != .apple else { throw ModelLibraryError.builtIn }
         while let running = teardowns[id] { _ = await running.value }
         // No awaits from these checks until the teardown is registered, so no load can start in between.
         guard id != typingModel, id != pendingSelection else { throw ModelLibraryError.inUse }

@@ -43,6 +43,8 @@ final class LiveLine {
     private var modernConverter: AnyObject?
     private var variety: SpellingVariety = .australian
     private var hints: [String] = []
+    /// A locale download started by a take. It outlives the take, which never waits for it.
+    private var installing: Task<Void, Never>?
 
     /// Takes effect from the next take; a take in progress keeps the locale and hints it started with.
     func configure(locale: SpellingVariety, hints: [HintTerm]) {
@@ -169,8 +171,16 @@ final class LiveLine {
             let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber])
             guard token == id, !Task.isCancelled else { return }
             if let request {
-                try? await request.downloadAndInstall()
-                guard token == id, !Task.isCancelled else { return }
+                // finish waits for setup, so a download here would hold up the typed text.
+                // Install in the background and skip captions until the locale is in.
+                if installing == nil {
+                    installing = Task { [weak self] in
+                        try? await request.downloadAndInstall()
+                        self?.installing = nil
+                    }
+                }
+                releaseSession()
+                return
             }
             let sessionAnalyzer = SpeechAnalyzer(modules: [transcriber], options: nil)
             analyzer = sessionAnalyzer
