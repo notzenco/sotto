@@ -14,11 +14,13 @@ This is an early prototype. It is English only and has been run on one Apple sil
 | Tap Right Command (under 180 ms) | Nothing. A stray tap never inserts. |
 | Double-tap Right Command | Listens hands-free until the next press. |
 | Press another key while holding | Treated as a shortcut, so the take is dropped. |
-| Esc | Cancels the take. |
+| Esc | Cancels the take, including while Sotto is still working after you let go. Nothing is inserted. |
 | Menu bar → Dictate | Starts or stops a hands-free take. |
 | Settings → Shortcut → Chord | Records your own push-to-talk shortcut, which works alongside Right Command. |
 
 The indicator shows a tick when text is inserted. If it cannot insert, it shows a short message, such as "Won't type into a password field" or "You moved away, so it's kept for Copy Last". Menu bar → Copy Last copies the last transcript.
+
+If you start a new take before the last one has finished, the earlier take's text still goes in, but the indicator only shows the newer take.
 
 **Modes.** Sotto picks a mode from the focused app. Settings → Speech → Mode can force one.
 
@@ -34,23 +36,23 @@ The indicator shows a tick when text is inserted. If it cannot insert, it shows 
 The indicator has three styles:
 
 - **Pill** is a capsule with bars that follow your voice.
-- **Notch** is a black tab at the top centre, with a recording dot and bars. It wraps around the camera notch on displays that have one.
+- **Notch** is a black tab at the top centre, with a recording dot and bars. It wraps around the camera notch on displays that have one. If the tab would cover the line you're typing on, that take uses the Pill at the bottom instead.
 - **Dot** is a small light with a glow that pulses with your voice.
 
-A lock marks hands-free listening. Working dots appear while Sotto processes the take. A tick or a problem message follows. The indicator lets clicks through and does not take focus.
+A lock marks hands-free listening. Working dots appear while Sotto processes the take. A tick or a problem message follows. The indicator lets clicks through and does not take focus. When Sotto knows where your text cursor is, the indicator moves to the other edge of the screen rather than cover the line you're typing on.
 
 Settings → Indicator has a live preview. Choose a style, size (80–150%), and bar colour: paper, white, blue, green, pink, orange or a custom colour. Pill and Dot can sit at the bottom centre, top centre or text cursor. If the cursor position is unavailable, they fall back to the bottom centre. Pill also has Dark, Glass and Light backgrounds. Choose the display with the mouse pointer or the main display; cursor placement uses the cursor's display when available. "Show words as you talk" adds a provisional caption while listening.
 
 The default is a dark Pill at the bottom centre, at 100% size, with paper bars, on the display with the mouse pointer. Words are off. With Reduce Motion on, the level changes opacity instead of bouncing.
 
-Open Settings from the menu bar. The window has a sidebar and remembers the last category.
+Open Settings from the menu bar, with ⌘, while Sotto is in front, or by opening Sotto again from Finder or Spotlight. The window has a sidebar and remembers the last category. Sotto shows a Dock icon while Settings is open, so the window reliably comes to the front.
 
 | Category | Contents |
 |---|---|
 | General | Open Sotto at login. |
 | Shortcut | Right Command instructions, the chord recorder and an Accessibility fix button when needed. |
 | Indicator | Style, position, size, colour, background, words and display, with a live preview. |
-| Microphone | Input device, "Keep the first syllable" and a level meter while the microphone is open. |
+| Microphone | Input device, "Keep the first syllable" and a level meter. The meter only runs while this page is showing and the microphone is open. |
 | Speech | Automatic, Prose or Literal mode; model status and Retry after a failure; English language. |
 | Dictionary | Add or delete heard → written spellings. |
 | History | Off or 24 hours, with recent transcripts and a Copy button for each. |
