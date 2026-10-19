@@ -1,6 +1,6 @@
 # Sotto: the new look
 
-Status: draft for approval · 19 October 2026
+Status: approved and implemented · 19 October 2026. The plan is `docs/superpowers/plans/2026-10-19-new-look.md`. See "Decisions made during implementation" for where the build refined this design.
 
 This is the first of three projects agreed for Sotto's next round. The other two come later, each with its own design:
 
@@ -160,6 +160,19 @@ Projects 2 and 3 will add categories (such as Snippets and Apps) and rows. Leave
 - "At the text cursor" follows the caret's display. "Show on" governs every other position.
 - When the caret position is known and the indicator would cover its line, the indicator jumps to the opposite edge for that take. When it isn't known, it stays where the owner put it.
 - Open at login is the only new General setting in this project.
+
+## Decisions made during implementation
+
+The build refined this design in these places. Each was a ruling made on the owner's behalf. The owner can overrule any of them.
+
+- **Caption side at the text cursor.** At the text cursor, the caption goes on the side of the indicator away from the caret, so it never lands on the line being typed.
+- **Staying on screen wins.** Widths are capped to the display, and every part of the indicator is kept on screen. When staying on screen and staying clear of the caret can't both hold, staying on screen wins.
+- **Notch fallback.** If the Notch tab itself would cover the caret's line (for example, a full-screen editor on a display without a notch), that take shows the Pill at bottom centre instead. Saved settings don't change.
+- **Esc while working.** Esc also cancels a take that is still Working after the key is released: nothing is inserted and nothing is shown.
+- **Overlapping takes.** If a new take starts before the previous one finishes, the previous take's text still inserts, but only the newest take is shown in the indicator. Stale results never replace newer messages.
+- **Meter lifetime.** The level meter runs only while the Settings window is visible and the Microphone page is selected.
+- **Dock icon.** Sotto shows a Dock icon while Settings is open, because an accessory app doesn't reliably bring its window to the front otherwise.
+- **Narrow displays.** On displays narrower than about 436 pt, which no Mac has, the indicator's drawing isn't shrunk to fit.
 
 ## Left to the builder
 
