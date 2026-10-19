@@ -43,16 +43,7 @@ final class ClipStore {
         }
     }
 
-    /// Nil when the clip's audio is missing or unreadable. Waits for pending writes.
-    func samples(for id: UUID) -> [Float]? {
-        let url = audioURL(id)
-        return files.sync {
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return Self.decode(data)
-        }
-    }
-
-    /// Like `samples(for:)`, but waits off the main actor.
+    /// Nil when the clip's audio is missing or unreadable. Waits for pending writes, off the main actor.
     func loadSamples(for id: UUID) async -> [Float]? {
         let url = audioURL(id)
         let files = files

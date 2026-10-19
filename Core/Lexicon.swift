@@ -146,6 +146,22 @@ public struct Lexicon: Codable, Equatable, Sendable {
         return copy
     }
 
+    /// Whether the owner deleted this written form, ignoring case and spacing.
+    public func blocks(_ written: String) -> Bool {
+        blocked.contains(Self.normalized(written))
+    }
+
+    /// Whether one of the owner's words or a learned word writes `word` with a capital, such as "Wispr",
+    /// so it keeps the capital when a dictation continues a sentence.
+    public func writesWithCapital(_ word: String) -> Bool {
+        let phrases = yourWords + learnedWords.map(\.written)
+        return phrases.contains { phrase in
+            phrase.split(whereSeparator: \.isWhitespace).contains { part in
+                part.first?.isUppercase == true && part.caseInsensitiveCompare(word) == .orderedSame
+            }
+        }
+    }
+
     /// Learned words with their misheard forms as aliases, then the owner's words. One term per written form.
     public var hintTerms: [HintTerm] {
         var seen: Set<String> = []

@@ -46,7 +46,10 @@ final class AppModel {
     private var levelWatchers: Set<LevelWatcher> = []
     private let live = LiveLine()
     private let inserter = TextInserter()
-    @ObservationIgnored private lazy var fixWatcher = FixWatcher(inserter: inserter) { [weak self] fix in
+    @ObservationIgnored private lazy var fixWatcher = FixWatcher(
+        inserter: inserter,
+        isDictating: { [unowned self] in self.listening || self.takes.isCommitting }
+    ) { [weak self] fix in
         self?.recordLearning(fix, source: .fix, clipID: nil)
     }
     private let hotkeys = HotkeyMonitor()
@@ -695,6 +698,7 @@ final class AppModel {
         if rulebook.replacements.contains(where: { $0.written.split(separator: " ").contains { $0 == word } }) {
             return true
         }
+        if lexicon.writesWithCapital(word) { return true }
         guard let start = text.range(of: word)?.lowerBound else { return false }
         let tagger = NLTagger(tagSchemes: [.nameType])
         tagger.string = text

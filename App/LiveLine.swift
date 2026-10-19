@@ -45,8 +45,12 @@ final class LiveLine {
     private var hints: [String] = []
     /// A locale download started by a take. It outlives the take, which never waits for it.
     private var installing: Task<Void, Never>?
+    /// The latest spelling whose locale was installed when a session started. Sessions keep using it while a
+    /// newly chosen locale installs, so Apple-typed takes still hear something.
+    private var installedVariety: SpellingVariety?
 
     /// Takes effect from the next take; a take in progress keeps the locale and hints it started with.
+    /// A locale that isn't installed yet takes effect from the first take after it installs.
     func configure(locale: SpellingVariety, hints: [HintTerm]) {
         variety = locale
         self.hints = hints.map(\.text)
@@ -172,16 +176,22 @@ final class LiveLine {
             guard token == id, !Task.isCancelled else { return }
             if let request {
                 // finish waits for setup, so a download here would hold up the typed text.
-                // Install in the background and skip captions until the locale is in.
+                // Install in the background and hear in the last installed locale until this one is in,
+                // or skip captions if there's none.
                 if installing == nil {
                     installing = Task { [weak self] in
                         try? await request.downloadAndInstall()
                         self?.installing = nil
                     }
                 }
+                if let fallback = installedVariety, fallback != variety {
+                    await prepare(id, variety: fallback, hints: hints)
+                    return
+                }
                 releaseSession()
                 return
             }
+            installedVariety = variety
             let sessionAnalyzer = SpeechAnalyzer(modules: [transcriber], options: nil)
             analyzer = sessionAnalyzer
             if !hints.isEmpty {

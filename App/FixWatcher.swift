@@ -7,25 +7,34 @@ import SottoCore
 @MainActor
 final class FixWatcher {
     private static let delay: Duration = .seconds(20)
+    /// How long the timed check waits while a take is listening or committing.
+    private static let retry: Duration = .seconds(2)
     private static let window: TimeInterval = 120
 
     private let inserter: TextInserter
+    private let isDictating: () -> Bool
     private let onFix: (Substitution) -> Void
     private var pending: (element: AXUIElement, text: String, offset: Int?, date: Date)?
     private var timer: Task<Void, Never>?
 
-    init(inserter: TextInserter, onFix: @escaping (Substitution) -> Void) {
+    init(inserter: TextInserter, isDictating: @escaping () -> Bool, onFix: @escaping (Substitution) -> Void) {
         self.inserter = inserter
+        self.isDictating = isDictating
         self.onFix = onFix
     }
 
     /// Remembers the inserter's last insertion, replacing any pending one, and checks it shortly.
+    /// The timed check waits out a take that is listening or committing, since the field read can take most of
+    /// a second on the main actor; the take's own start check, or this one once it's over, reads the field.
     func watch() {
         timer?.cancel()
         pending = inserter.lastInsertion
         guard pending != nil else { return }
         timer = Task { [weak self] in
             try? await Task.sleep(for: Self.delay)
+            while !Task.isCancelled, self?.isDictating() == true {
+                try? await Task.sleep(for: Self.retry)
+            }
             guard !Task.isCancelled else { return }
             self?.check()
         }

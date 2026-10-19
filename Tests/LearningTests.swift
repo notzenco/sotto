@@ -129,6 +129,25 @@ final class LearningTests: XCTestCase {
         XCTAssertEqual(lex.learnedWords.map(\.heardForms), [["madgie", "margie"]])
     }
 
+    func testBlocksMatchesDeletedWrittenFormsLoosely() {
+        var lex = Lexicon().recording(Substitution(heard: "margie", written: "my G"), source: .fix, clipID: nil)
+        XCTAssertFalse(lex.blocks("my G"))
+        lex = lex.deleting(id: lex.learnedWords[0].id)
+        XCTAssertTrue(lex.blocks("My  g"))
+        XCTAssertFalse(lex.blocks("Sotto"))
+    }
+
+    func testCapitalisedDictionaryWordsKeepTheirCapital() {
+        let lex = Lexicon(yourWords: ["Wispr", "slay"])
+            .recording(Substitution(heard: "madgie", written: "my G"), source: .fix, clipID: nil)
+            .recording(Substitution(heard: "t three", written: "T3 Code"), source: .fix, clipID: nil)
+        XCTAssertTrue(lex.writesWithCapital("Wispr"))
+        XCTAssertTrue(lex.writesWithCapital("Code"))
+        XCTAssertFalse(lex.writesWithCapital("Slay"))   // the owner wrote it lowercase
+        XCTAssertFalse(lex.writesWithCapital("My"))     // "my G" writes "my" lowercase
+        XCTAssertFalse(lex.writesWithCapital("Hello"))
+    }
+
     func testTeacherWithoutAClipNeverLearns() {
         let pair = Substitution(heard: "madgie", written: "my G")
         let lex = Lexicon().recording(pair, source: .teacher, clipID: nil).recording(pair, source: .teacher, clipID: nil)

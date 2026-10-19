@@ -5,12 +5,12 @@ import SottoCore
 ///
 /// Each choice is saved on the clip at once, so the list and score show it. Learning waits for `flush`, when the
 /// window closes or Sotto quits, and then learns once per clip from its final choice, so a misclick that's
-/// changed or cleared teaches nothing.
+/// changed or cleared teaches nothing. A word the owner deletes after choosing isn't learned back at close.
 @MainActor
 final class ComparePicks {
     private weak var model: AppModel?
-    /// Clips chosen since the last flush.
-    private var pending: Set<UUID> = []
+    /// Clips chosen since the last flush, with the lexicon as it was at the latest choice.
+    private var pending: [UUID: Lexicon] = [:]
 
     init(model: AppModel) {
         self.model = model
@@ -46,12 +46,17 @@ final class ComparePicks {
     func flush() {
         guard let model else { return }
         let clips = pending
-        pending = []
-        for id in clips {
+        pending = [:]
+        for (id, lexiconAtChoice) in clips {
             guard let record = record(id),
                   let chosen = record.pickedModel.flatMap(record.compareText(for:)) ?? record.correctedText
             else { continue }
             for substitution in PhraseAligner.learningSubstitutions(from: record.rawText, to: chosen) {
+                // Deleted since the choice: the deletion is newer, so it stands. A word already deleted when the
+                // owner chose it is learned again, as a Compare pick unblocks it.
+                if model.lexicon.blocks(substitution.written), !lexiconAtChoice.blocks(substitution.written) {
+                    continue
+                }
                 model.recordLearning(substitution, source: .compare, clipID: id)
             }
         }
@@ -67,11 +72,12 @@ final class ComparePicks {
         if record.modelTexts[record.typingModel.rawValue] == nil, !record.hintedText.isEmpty {
             record.modelTexts[record.typingModel.rawValue] = record.hintedText
         }
-        model?.clips.update(record)
+        guard let model else { return }
+        model.clips.update(record)
         if record.pickedModel != nil || record.correctedText != nil {
-            pending.insert(record.id)
+            pending[record.id] = model.lexicon
         } else {
-            pending.remove(record.id)
+            pending[record.id] = nil
         }
     }
 }
