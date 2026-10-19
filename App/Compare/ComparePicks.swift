@@ -51,7 +51,7 @@ final class ComparePicks {
             guard let record = record(id),
                   let chosen = record.pickedModel.flatMap(record.compareText(for:)) ?? record.correctedText
             else { continue }
-            for substitution in PhraseAligner.substitutions(from: record.rawText, to: chosen) {
+            for substitution in PhraseAligner.learningSubstitutions(from: record.rawText, to: chosen) {
                 model.recordLearning(substitution, source: .compare, clipID: id)
             }
         }

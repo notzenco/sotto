@@ -51,4 +51,16 @@ final class ClipRecordTests: XCTestCase {
         a.modelTexts["phonon2"] = "Hey my G"
         XCTAssertEqual(CompareScore.tally([a])[.phonon2], ModelScore(right: 1, judged: 1))
     }
+
+    func testTallyIgnoresSpellingVariety() {
+        var a = record()
+        a.modelTexts = ["parakeetV2": "I realize the color is off.", "appleEnglish": "I realise the colour is off", "cohere": "I realise the collar is off."]
+        a.pickedModel = .appleEnglish
+        var b = record()
+        b.modelTexts = ["parakeetV2": "Nice color, my G."]
+        b.correctedText = "Nice colour, my G."
+        let score = CompareScore.tally([a, b])
+        XCTAssertEqual(score[.parakeetV2], ModelScore(right: 2, judged: 2))
+        XCTAssertEqual(score[.cohere], ModelScore(right: 0, judged: 1))
+    }
 }

@@ -15,6 +15,13 @@ final class LearningTests: XCTestCase {
         XCTAssertEqual(PhraseAligner.substitutions(from: "the colour", to: "The color.", normalize: { $0 == "colour" ? "color" : $0 }), [])
     }
 
+    func testLearningIgnoresSpellingVariety() {
+        XCTAssertEqual(PhraseAligner.learningSubstitutions(from: "I realize the color is off Madgie",
+                                                           to: "I realise the colour is off my G"),
+                       [Substitution(heard: "madgie", written: "my G")])
+        XCTAssertEqual(PhraseAligner.learningSubstitutions(from: "I realise the colour is off", to: "I realize the color is off."), [])
+    }
+
     func testLongRewritesAndPureInsertionsAreIgnored() {
         XCTAssertEqual(PhraseAligner.substitutions(from: "a b c d e f g", to: "one two three four five six seven"), [])
         XCTAssertEqual(PhraseAligner.substitutions(from: "send it", to: "send it now"), [])

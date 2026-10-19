@@ -20,7 +20,6 @@ public enum TeacherQueue {
 
     /// The typing model's words the teacher heard differently, ignoring spelling variety.
     public static func substitutions(in record: ClipRecord, teacherText: String) -> [Substitution] {
-        PhraseAligner.substitutions(from: record.rawText, to: teacherText,
-                                    normalize: { SpellingConverter.convert($0, to: .american) })
+        PhraseAligner.learningSubstitutions(from: record.rawText, to: teacherText)
     }
 }

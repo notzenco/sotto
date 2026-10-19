@@ -82,7 +82,8 @@ public struct ModelScore: Equatable, Sendable {
 
 public enum CompareScore {
     /// A clip is judged once it has a Compare pick or a corrected text. A model is right when it was picked,
-    /// or its text matches the picked model's text or the corrected text, ignoring case and punctuation.
+    /// or its text matches the picked model's text or the corrected text, ignoring case, punctuation and
+    /// spelling variety (Sotto respells before typing, so "color" and "colour" are both right).
     public static func tally(_ records: [ClipRecord]) -> [SpeechModelID: ModelScore] {
         var scores: [SpeechModelID: ModelScore] = [:]
         for record in records where record.pickedModel != nil || record.correctedText != nil {
@@ -102,7 +103,9 @@ public enum CompareScore {
     }
 
     private static func normalized(_ text: String) -> String {
-        String(text.lowercased().unicodeScalars.filter { !CharacterSet.punctuationCharacters.contains($0) })
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        PhraseAligner.ignoringSpelling(
+            String(text.lowercased().unicodeScalars.filter { !CharacterSet.punctuationCharacters.contains($0) })
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        )
     }
 }

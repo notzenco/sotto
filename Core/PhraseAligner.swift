@@ -28,6 +28,17 @@ public enum PhraseAligner {
             return span.substitution(heard: heard, written: written, core: run.written)
         }
     }
+
+    /// The substitutions to learn from: differences in case, punctuation and spelling variety don't count,
+    /// so "colour" against "color" teaches nothing. The teacher and Compare both learn through this.
+    public static func learningSubstitutions(from hypothesis: String, to reference: String) -> [Substitution] {
+        substitutions(from: hypothesis, to: reference, normalize: ignoringSpelling)
+    }
+
+    /// Maps a word or phrase to American spelling, so spelling varieties compare equal.
+    public static func ignoringSpelling(_ text: String) -> String {
+        SpellingConverter.convert(text, to: .american)
+    }
 }
 
 /// One word of a transcript: as written, and as compared.
