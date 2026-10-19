@@ -1,6 +1,5 @@
 import FluidAudio
 import Foundation
-import OSLog
 import SottoCore
 import Synchronization
 
@@ -9,7 +8,6 @@ actor ParakeetFamilyEngine: SpeechEngine {
     nonisolated let id: SpeechModelID
     private let version: AsrModelVersion
     private let booster: HintBooster
-    private let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     private var manager: AsrManager?
     private var preparation: Task<AsrManager, any Error>?
@@ -54,12 +52,8 @@ actor ParakeetFamilyEngine: SpeechEngine {
             let result = try await manager.transcribeFresh(samples)
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
             if text.isEmpty { return nil }
-            let clock = ContinuousClock()
-            let start = clock.now
             let hinted = await booster.apply(
                 text: text, tokenTimings: result.tokenTimings ?? [], samples: samples, hints: hints)
-            let ms = (clock.now - start) / .milliseconds(1)
-            log.debug("hint_booster \(ms, format: .fixed(precision: 1), privacy: .public)ms hints \(hints.count, privacy: .public)")
             return EngineResult(raw: text, hinted: hinted)
         } catch ASRError.invalidAudioData {
             return nil
