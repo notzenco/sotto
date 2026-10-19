@@ -435,10 +435,10 @@ Privacy statement, exact copy:
 - Consumes: `FixDetector`, `Substitution` (Task 4), `AppModel.recordLearning` (Task 9).
 - Produces:
   - `TextInserter.fieldText(of element: AXUIElement) -> String?`: `kAXValueAttribute` as a String, nil for secure fields, or when the value is longer than 100,000 characters.
-  - `TextInserter.lastInsertion: (element: AXUIElement, text: String, date: Date)?`, set after each successful insert (the existing `recent` record can become this).
+  - `TextInserter.lastInsertion: (element: AXUIElement, text: String, offset: Int?, date: Date)?`, set after each successful insert (the existing `recent` record can become this). `offset` is the UTF-16 cursor location read just before inserting (the selected-range location `axTextBeforeCursor` already reads), or nil when the field didn't report it.
   - `@MainActor final class FixWatcher { init(inserter: TextInserter, onFix: @escaping (Substitution) -> Void); func watch(); func check() }`.
 
-Behaviour: `watch()` schedules a check about 20 seconds after an insertion. `check()` runs at most once per insertion, only within 2 minutes of it. It reads `fieldText(of:)` for the remembered element and calls `FixDetector.fix(inserted:fieldText:)`; a non-nil result goes to `onFix`, which `AppModel` wires to `recordLearning(_, source: .fix, clipID: nil)`. A newer insertion replaces the pending one. Elements that no longer exist, or that return nil, are dropped silently.
+Behaviour: `watch()` schedules a check about 20 seconds after an insertion. `check()` runs at most once per insertion, only within 2 minutes of it. It reads `fieldText(of:)` for the remembered element and calls `FixDetector.fix(inserted:fieldText:near:)` with the remembered offset; a non-nil result goes to `onFix`, which `AppModel` wires to `recordLearning(_, source: .fix, clipID: nil)`. A newer insertion replaces the pending one. Elements that no longer exist, or that return nil, are dropped silently.
 
 - [ ] **Step 1: Implement and wire as above.**
 - [ ] **Step 2: `$BUILD` passes.**
