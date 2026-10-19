@@ -73,12 +73,23 @@ struct SettingsView: View {
             detail
                 .navigationTitle(selectedPane.title)
         }
+        .onAppear { updateMeter() }
+        .onChange(of: selectedPane) { _, _ in updateMeter() }
+    }
+
+    private func updateMeter() {
+        model.setSettingsMicrophoneSelected(selectedPane == .microphone)
     }
 
     private var selection: Binding<SettingsPane?> {
         Binding(
             get: { selectedPane },
-            set: { if let pane = $0 { selectedPane = pane } }
+            set: {
+                if let pane = $0 {
+                    selectedPane = pane
+                    updateMeter()
+                }
+            }
         )
     }
 
@@ -92,7 +103,7 @@ struct SettingsView: View {
         case .shortcut:
             ShortcutSettingsPane(model: model)
         case .indicator:
-            IndicatorPane(model: model)
+            IndicatorPane(model: model, windowVisible: model.settingsActivity.windowVisible)
         case .microphone:
             MicrophoneSettingsPane(model: model)
         case .speech:

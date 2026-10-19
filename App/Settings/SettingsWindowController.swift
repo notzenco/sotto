@@ -5,6 +5,7 @@ import SwiftUI
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let window: NSWindow
     private weak var model: AppModel?
+    private var visibility: SettingsWindowVisibility?
 
     var isOpen: Bool { window.isVisible || window.isMiniaturized }
 
@@ -17,6 +18,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             defer: false
         )
         super.init()
+        visibility = SettingsWindowVisibility(window: window) { [weak model] visible in
+            model?.setSettingsWindowVisible(visible)
+        }
         window.title = "Sotto Settings"
         window.minSize = NSSize(width: 720, height: 480)
         window.contentViewController = NSHostingController(rootView: SettingsView(model: model))
@@ -30,12 +34,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         if let pane {
             UserDefaults.standard.set(pane.rawValue, forKey: "settingsPane")
         }
+        let savedPane = UserDefaults.standard.string(forKey: "settingsPane").flatMap(SettingsPane.init(rawValue:))
+        let selected = pane ?? savedPane ?? .general
+        model?.setSettingsMicrophoneSelected(selected == .microphone)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         if window.isMiniaturized {
             window.deminiaturize(nil)
         }
         window.makeKeyAndOrderFront(nil)
+        visibility?.shown()
     }
 
     func windowWillClose(_ notification: Notification) {

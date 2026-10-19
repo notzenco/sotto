@@ -131,9 +131,7 @@ struct MicrophoneSettingsPane: View {
         .formStyle(.grouped)
         .onAppear {
             model.refreshMicrophones()
-            model.setLevelWatching(true, for: .meter)
         }
-        .onDisappear { model.setLevelWatching(false, for: .meter) }
     }
 
     private var microphoneSelection: Binding<UInt32?> {

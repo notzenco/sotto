@@ -20,6 +20,7 @@ final class AppModel {
     var modelPhase: ModelPhase = .missing
     var listening = false
     var inputLevel: Float = 0
+    private(set) var settingsActivity = SettingsActivity()
     var accessibilityOn = false
     var microphoneOn = false
     private(set) var openAtLogin = SMAppService.mainApp.status == .enabled
@@ -124,6 +125,16 @@ final class AppModel {
             levelWatchers.remove(watcher)
         }
         capture.publishesLevel = !levelWatchers.isEmpty
+    }
+
+    func setSettingsWindowVisible(_ visible: Bool) {
+        settingsActivity.windowVisible = visible
+        setLevelWatching(settingsActivity.watchesMeter, for: .meter)
+    }
+
+    func setSettingsMicrophoneSelected(_ selected: Bool) {
+        settingsActivity.microphoneSelected = selected
+        setLevelWatching(settingsActivity.watchesMeter, for: .meter)
     }
 
     func refreshPermissions() {

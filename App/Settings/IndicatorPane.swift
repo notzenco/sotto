@@ -5,11 +5,12 @@ import SwiftUI
 
 struct IndicatorPane: View {
     var model: AppModel
+    var windowVisible: Bool
 
     var body: some View {
         Form {
             Section {
-                IndicatorPreview(settings: model.settings.indicator)
+                IndicatorPreview(settings: model.settings.indicator, windowVisible: windowVisible)
             }
             Section {
                 Picker("Style", selection: selection(\.style)) {
@@ -125,10 +126,10 @@ struct IndicatorPane: View {
 
 private struct IndicatorPreview: View {
     var settings: IndicatorSettings
+    var windowVisible: Bool
     @State private var state = IndicatorState()
     @State private var timer: Timer?
     @State private var appeared = false
-    @State private var windowVisible = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -165,12 +166,6 @@ private struct IndicatorPreview: View {
         .overlay { RoundedRectangle(cornerRadius: 9).strokeBorder(.primary.opacity(0.12)) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Live indicator preview")
-        .background {
-            PreviewWindowVisibility { visible in
-                windowVisible = visible
-                updateTimer()
-            }
-        }
         .onAppear {
             appeared = true
             state.phase = .listening(handsFree: false)
@@ -179,6 +174,7 @@ private struct IndicatorPreview: View {
             updateTimer()
         }
         .onChange(of: settings) { _, value in state.settings = value }
+        .onChange(of: windowVisible) { _, _ in updateTimer() }
         .onDisappear {
             appeared = false
             stopTimer()
@@ -248,50 +244,5 @@ private struct IndicatorPreview: View {
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
-    }
-}
-
-// A retained Settings window can close without destroying its SwiftUI tree.
-// Observe its visibility as well as the pane's onAppear/onDisappear lifecycle.
-private struct PreviewWindowVisibility: NSViewRepresentable {
-    var changed: (Bool) -> Void
-
-    func makeNSView(context: Context) -> VisibilityView {
-        let view = VisibilityView()
-        view.changed = changed
-        return view
-    }
-
-    func updateNSView(_ view: VisibilityView, context: Context) {
-        view.changed = changed
-    }
-
-    final class VisibilityView: NSView {
-        var changed: ((Bool) -> Void)?
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            NotificationCenter.default.removeObserver(self)
-            if let window {
-                NotificationCenter.default.addObserver(
-                    self, selector: #selector(visibilityChanged),
-                    name: NSWindow.didChangeOcclusionStateNotification, object: window
-                )
-                NotificationCenter.default.addObserver(
-                    self, selector: #selector(windowClosing),
-                    name: NSWindow.willCloseNotification, object: window
-                )
-            }
-            visibilityChanged()
-        }
-
-        @objc private func visibilityChanged() {
-            let visible = window?.occlusionState.contains(.visible) == true
-            Task { @MainActor [weak self] in self?.changed?(visible) }
-        }
-
-        @objc private func windowClosing() {
-            Task { @MainActor [weak self] in self?.changed?(false) }
-        }
     }
 }
