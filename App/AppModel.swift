@@ -6,6 +6,10 @@ import SottoCore
 import SwiftUI
 import os
 
+enum LevelWatcher: Hashable {
+    case indicator, meter
+}
+
 @MainActor
 @Observable
 final class AppModel {
@@ -14,6 +18,7 @@ final class AppModel {
     var history: [HistoryEntry]
     var modelPhase: ModelPhase = .missing
     var listening = false
+    var inputLevel: Float = 0
     var accessibilityOn = false
     var microphoneOn = false
     var microphones: [InputDevice] = []
@@ -29,6 +34,7 @@ final class AppModel {
 
     private var hold = HoldTracker()
     private let capture = AudioCapture()
+    private var levelWatchers: Set<LevelWatcher> = []
     private let engine = ParakeetEngine()
     private let live = LiveLine()
     private let inserter = TextInserter()
@@ -68,6 +74,9 @@ final class AppModel {
         capture.onSamples = { buffer, _ in
             box.value.accept(buffer)
         }
+        capture.onLevel = { level in
+            Task { @MainActor in AppDelegateBridge.model?.inputLevel = level }
+        }
         live.onChange = { [weak self] text in
             self?.provisional(text)
         }
@@ -96,6 +105,15 @@ final class AppModel {
         watchHotkey()
         modelPhase = .downloading
         Task { modelPhase = await engine.prepare() }
+    }
+
+    func setLevelWatching(_ on: Bool, for watcher: LevelWatcher) {
+        if on {
+            levelWatchers.insert(watcher)
+        } else {
+            levelWatchers.remove(watcher)
+        }
+        capture.publishesLevel = !levelWatchers.isEmpty
     }
 
     func refreshPermissions() {
