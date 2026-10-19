@@ -30,11 +30,13 @@
 		ABD11B9B0E8A8B41099C413E /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E92379DF801F9A016518C4A /* Permissions.swift */; };
 		B5EA9879D19BB7665AAB89E8 /* libSottoCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3F6DE0D49F84C5997837AD5B /* libSottoCore.a */; };
 		B949D42AB2779695D3E22A54 /* LevelMeterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */; };
+		C084A5CBA85C6FC0A05585BB /* IndicatorLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */; };
 		C6DF9CAE74DB36CF14F177E7 /* InsertPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92F56757B510A190839C4BB /* InsertPlanner.swift */; };
 		D5A79C85D00BF3982849B454 /* TranscriptFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5725C9D695FB3DFAFE8BF054 /* TranscriptFormatter.swift */; };
 		D8041B38DD0ED190B1374C88 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 8D7FA84FB1A41CDE07EBDF5A /* KeyboardShortcuts */; };
 		DB556DB8D5385272C0902E99 /* SottoCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F9A36D846BD703AB4954B1B /* SottoCoreTests.swift */; };
 		E0BB6D9B30FF25AEB59AFF85 /* IndicatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */; };
+		E180C3A67B7166CF86AB7201 /* IndicatorLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */; };
 		E45626642DBF24EA8F24EE78 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */; };
 		E5F8DB2356A832E04C3C6EBD /* Stores.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC51D3A5933645C7B14C2D9 /* Stores.swift */; };
 		F62814C1280CD5A67506366D /* HoldTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28035B2F64D20BFBB7C8BE7 /* HoldTracker.swift */; };
@@ -82,9 +84,11 @@
 		9E92379DF801F9A016518C4A /* Permissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permissions.swift; sourceTree = "<group>"; };
 		A1AFEEAA4135B21CE61AF91D /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		A2A4CDE6531DDDA4BF1193E1 /* ParakeetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetEngine.swift; sourceTree = "<group>"; };
+		ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorLayoutTests.swift; sourceTree = "<group>"; };
 		B28035B2F64D20BFBB7C8BE7 /* HoldTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldTracker.swift; sourceTree = "<group>"; };
 		BF82C7764642BCB684DCED3A /* LevelMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelMeter.swift; sourceTree = "<group>"; };
 		C1B25E6714CF4F0556E5527F /* SottoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SottoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorLayout.swift; sourceTree = "<group>"; };
 		CB1AC3A3F36B48F542D76655 /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
 		D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorTests.swift; sourceTree = "<group>"; };
 		D92F56757B510A190839C4BB /* InsertPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertPlanner.swift; sourceTree = "<group>"; };
@@ -120,6 +124,7 @@
 		03EE21664FE912C42CCE7A3C /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */,
 				D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */,
 				E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */,
 				1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */,
@@ -145,6 +150,7 @@
 				F7D348ACDDD1E00CFB8160D3 /* DictationMode.swift */,
 				B28035B2F64D20BFBB7C8BE7 /* HoldTracker.swift */,
 				8E5889C01D01EA2919CEEE8F /* Indicator.swift */,
+				C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */,
 				D92F56757B510A190839C4BB /* InsertPlanner.swift */,
 				BF82C7764642BCB684DCED3A /* LevelMeter.swift */,
 				1FC9DFB9E59867B138ECB963 /* PreRoll.swift */,
@@ -342,6 +348,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C084A5CBA85C6FC0A05585BB /* IndicatorLayoutTests.swift in Sources */,
 				E0BB6D9B30FF25AEB59AFF85 /* IndicatorTests.swift in Sources */,
 				B949D42AB2779695D3E22A54 /* LevelMeterTests.swift in Sources */,
 				E45626642DBF24EA8F24EE78 /* SettingsTests.swift in Sources */,
@@ -357,6 +364,7 @@
 				96EC04C973AD8D60B5F04E5D /* DictationMode.swift in Sources */,
 				F62814C1280CD5A67506366D /* HoldTracker.swift in Sources */,
 				48F5731364F01F2AD65BE690 /* Indicator.swift in Sources */,
+				E180C3A67B7166CF86AB7201 /* IndicatorLayout.swift in Sources */,
 				C6DF9CAE74DB36CF14F177E7 /* InsertPlanner.swift in Sources */,
 				00E468A4C2FBAC018637E0F6 /* LevelMeter.swift in Sources */,
 				24243F453447EF048555ABDC /* PreRoll.swift in Sources */,
