@@ -18,9 +18,10 @@ enum AppleDictation {
     }
 
     /// Only the written forms; the misheard aliases would steer Apple toward the wrong words.
+    /// Callers pass `Lexicon.contextualHints()`, already in priority order; this only enforces the cap.
     static func context(_ hints: [String]) -> AnalysisContext {
         let context = AnalysisContext()
-        context.contextualStrings[.general] = hints
+        context.contextualStrings[.general] = Array(hints.prefix(Lexicon.contextualHintLimit))
         return context
     }
 }
@@ -92,6 +93,7 @@ actor AppleEngine: SpeechEngine {
                 await analyzer.cancelAndFinishNow()
             }
         } catch {
+            await analyzer.cancelAndFinishNow()
             words.cancel()
             throw error
         }

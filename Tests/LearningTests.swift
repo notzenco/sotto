@@ -141,6 +141,28 @@ final class LearningTests: XCTestCase {
         XCTAssertEqual(lex.hintTerms, [HintTerm(text: "my G", aliases: ["margie"]), HintTerm(text: "Sotto")])
     }
 
+    func testContextualHintsPutYourWordsFirstThenNewestLearned() {
+        let lex = Lexicon()
+            .recording(Substitution(heard: "margie", written: "my G"), source: .fix, clipID: nil)
+            .recording(Substitution(heard: "soto", written: "Sotto"), source: .fix, clipID: nil)
+            .recording(Substitution(heard: "zenko", written: "Zenco"), source: .teacher, clipID: nil)
+            .addingYourWord("Kian").addingYourWord("sotto")
+        XCTAssertEqual(lex.contextualHints().map(\.text), ["Kian", "sotto", "my G"])
+    }
+
+    func testContextualHintsAreCapped() {
+        var lex = Lexicon()
+        for index in 0..<80 {
+            lex = lex.recording(Substitution(heard: "heard\(index)", written: "learned\(index)"), source: .fix, clipID: nil)
+        }
+        for index in 0..<30 { lex = lex.addingYourWord("mine\(index)") }
+        let hints = lex.contextualHints().map(\.text)
+        XCTAssertEqual(hints.count, 100)
+        XCTAssertEqual(Array(hints.prefix(31)), (0..<30).map { "mine\($0)" } + ["learned79"])
+        XCTAssertEqual(hints.last, "learned10")
+        XCTAssertEqual(lex.contextualHints(limit: 2).map(\.text), ["mine0", "mine1"])
+    }
+
     func testOlderLexiconFilesDecodeWithDefaults() throws {
         let id = UUID()
         let word = """

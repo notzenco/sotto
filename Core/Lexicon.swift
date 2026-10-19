@@ -159,6 +159,23 @@ public struct Lexicon: Codable, Equatable, Sendable {
         return terms
     }
 
+    /// How many hint words Apple's engine gets as contextual strings.
+    public static let contextualHintLimit = 100
+
+    /// The hints for Apple, capped: the owner's words first, then learned words, newest first.
+    /// Entries carry no learned date, so the newest is the one first recorded last.
+    public func contextualHints(limit: Int = contextualHintLimit) -> [HintTerm] {
+        var seen: Set<String> = []
+        var terms: [HintTerm] = []
+        for word in yourWords where seen.insert(Self.normalized(word)).inserted {
+            terms.append(HintTerm(text: word))
+        }
+        for entry in learnedWords.reversed() where seen.insert(Self.normalized(entry.written)).inserted {
+            terms.append(HintTerm(text: entry.written, aliases: entry.heardForms))
+        }
+        return Array(terms.prefix(max(0, limit)))
+    }
+
     private struct ReadableEntry: Decodable {
         let word: LearnedWord?
 

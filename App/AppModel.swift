@@ -148,7 +148,7 @@ final class AppModel {
 
     /// Apple's live session hears in the spelling's English and listens for the hint words, from the next take.
     private func refreshLiveContext() {
-        live.configure(locale: settings.spelling, hints: lexicon.hintTerms)
+        live.configure(locale: settings.spelling, hints: lexicon.contextualHints())
     }
 
     func setLevelWatching(_ on: Bool, for watcher: LevelWatcher) {
@@ -583,7 +583,10 @@ final class AppModel {
         }
         let transcript = await transcriptTask.value
         guard takes.allowsInsertion(take) else { return }
-        let apple = await appleTask.value
+        // The typing model's words never wait for Apple's session, which finishes or is cancelled on its own.
+        // Its text is needed only when Apple types, as the fallback, or for Copy Last while the model downloads.
+        let needsLiveText = usesLiveText || modelPhase != .ready || (transcript?.hinted.isEmpty ?? true)
+        let apple = needsLiveText ? await appleTask.value : ""
         guard takes.allowsInsertion(take) else { return }
         let transcribed = Date()
 

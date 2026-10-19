@@ -62,26 +62,31 @@ final class ModelLibrary {
 
     /// Maps the typing model's state for callers that predate the model library.
     var typingPhase: ModelPhase {
-        switch states[typingModel] {
-        case .ready?: typingEngine == nil ? .downloading : .ready
-        case .downloading?, .preparing?: .downloading
+        // Ready whenever an engine types, including while a spelling change prepares Apple's replacement.
+        if typingEngine != nil { return .ready }
+        return switch states[typingModel] {
+        case .ready?, .downloading?, .preparing?: .downloading
         case .failed(let reason)?: .failed(reason)
         case .notDownloaded?, nil: .missing
         }
     }
 
     /// Rebuilds the Apple engine, if any, for the new locale. The old one unloads once no job holds it.
+    /// If Apple types, it keeps typing on the old engine until the new one is ready, as `select` does.
     func setSpelling(_ variety: SpellingVariety) {
         guard variety != spelling else { return }
         spelling = variety
         guard let old = engines[.appleEnglish] else { return }
         engines[.appleEnglish] = makeEngine(for: .appleEnglish, spelling: variety, hintBooster: hintBooster)
-        states[.appleEnglish] = nil
         retired[.appleEnglish, default: []].append(old)
-        Task { await unloadRetiredIfIdle(.appleEnglish) }
-        guard typingModel == .appleEnglish else { return }
-        typingEngine = nil
-        Task { await prepareTypingModel() }
+        if typingModel == .appleEnglish {
+            // prepareTypingModel swaps in the new engine, and its release retires the old one.
+            Task { await prepareTypingModel() }
+        } else {
+            states[.appleEnglish] = nil
+            Task { await unloadRetiredIfIdle(.appleEnglish) }
+        }
+        refreshDownloadStates()
     }
 
     func refreshDownloadStates() {
@@ -184,8 +189,10 @@ final class ModelLibrary {
     ) async throws -> T {
         guard let candidate = engines[id] else { throw ModelLibraryError.unavailable }
         guard await candidate.isDownloaded() else { throw ModelLibraryError.notDownloaded }
-        guard let engine = await acquire(id) else {
+        // A spelling change can swap in a new Apple engine meanwhile, so the load checks again and never downloads.
+        guard let engine = await acquire(id, downloading: false) else {
             await release(id)
+            if await engines[id]?.isDownloaded() == false { throw ModelLibraryError.notDownloaded }
             if case .failed(let reason)? = states[id] { throw ModelLibraryError.notReady(reason) }
             throw ModelLibraryError.notReady("The model didn't load.")
         }
@@ -200,10 +207,10 @@ final class ModelLibrary {
     }
 
     /// Takes a lease and loads the model, returning the engine that loaded. Every acquire needs a matching `release`,
-    /// whether or not it loaded.
-    private func acquire(_ id: SpeechModelID) async -> (any SpeechEngine)? {
+    /// whether or not it loaded. Without `downloading`, a model that isn't downloaded doesn't load.
+    private func acquire(_ id: SpeechModelID, downloading: Bool = true) async -> (any SpeechEngine)? {
         leases[id, default: 0] += 1
-        return await load(id)
+        return await load(id, downloading: downloading)
     }
 
     private func release(_ id: SpeechModelID) async {
@@ -214,9 +221,12 @@ final class ModelLibrary {
     }
 
     /// A lease on the replacement also keeps a retired engine, which errs toward letting a job finish.
+    /// The engine still typing stays until its replacement is ready.
     private func unloadRetiredIfIdle(_ id: SpeechModelID) async {
-        guard leases[id] == nil, let old = retired.removeValue(forKey: id) else { return }
-        for engine in old { await engine.unload() }
+        guard leases[id] == nil, let old = retired[id] else { return }
+        let typing = old.filter { $0 === typingEngine }
+        retired[id] = typing.isEmpty ? nil : typing
+        for engine in old where engine !== typingEngine { await engine.unload() }
     }
 
     /// Unloads a model nothing holds. Registers the teardown before any await, so a later load waits for it.
@@ -237,10 +247,15 @@ final class ModelLibrary {
 
     /// Waits out an unload or delete, then joins a download or load already running for the same engine.
     /// Returns the model's current engine if it loaded.
-    private func load(_ id: SpeechModelID) async -> (any SpeechEngine)? {
+    private func load(_ id: SpeechModelID, downloading: Bool) async -> (any SpeechEngine)? {
         while true {
             while let teardown = teardowns[id] { _ = await teardown.value }
             guard let engine = engines[id] else { return nil }
+            if !downloading {
+                let downloaded = await engine.isDownloaded()
+                guard engines[id] === engine else { continue }
+                guard downloaded else { return nil }
+            }
             let ready: Bool
             if let running = loading[id], running.engine === engine {
                 ready = await running.task.value
