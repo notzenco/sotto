@@ -2,6 +2,19 @@ import XCTest
 @testable import SottoCore
 
 final class TakeLedgerTests: XCTestCase {
+    func testAnyCommitCountsWhileASupersededTakeIsStillWorking() {
+        var ledger = TakeLedger()
+        XCTAssertFalse(ledger.isCommitting)
+        let a = ledger.begin()
+        XCTAssertFalse(ledger.isCommitting)
+        _ = ledger.finish()
+        _ = ledger.begin()
+        XCTAssertFalse(ledger.isPending)
+        XCTAssertTrue(ledger.isCommitting, "A still commits while B listens")
+        ledger.complete(a)
+        XCTAssertFalse(ledger.isCommitting)
+    }
+
     func testOverlapKeepsOwnInsertionButCannotReadOrPresentTheNewTake() throws {
         var ledger = TakeLedger()
         let a = ledger.begin()

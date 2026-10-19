@@ -35,6 +35,6 @@ final class TeacherQueueTests: XCTestCase {
         var clip = record(at: 0)
         clip.rawText = "What's up Madgie, nice colour"
         let found = TeacherQueue.substitutions(in: clip, teacherText: "What's up, my G? Nice color.")
-        XCTAssertEqual(found.map(\.written), ["my G"])
+        XCTAssertEqual(found, [Substitution(heard: "madgie", written: "my G")])
     }
 }

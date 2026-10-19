@@ -78,6 +78,7 @@ final class AppModel {
         teacher = TeacherScheduler(
             library: library, clips: clips,
             settings: { [unowned self] in self.settings },
+            isDictating: { [unowned self] in self.listening || self.takes.isCommitting },
             onSubstitution: { [weak self] substitution, clipID in
                 self?.recordLearning(substitution, source: .teacher, clipID: clipID)
             })
@@ -480,6 +481,7 @@ final class AppModel {
             guard let take = takes.finish() else { return }
             listening = false
             locked = false
+            teacher?.noteDictation()
             indicator.show(.working)
             let snapshot = captured
             let domain = capturedDomain
@@ -490,6 +492,7 @@ final class AppModel {
             guard let take = takes.cancel() else { return }
             listening = false
             locked = false
+            teacher?.noteDictation()
             if postRollTake == take { postRollTake = nil }
             parkedSamples.removeValue(forKey: take)
             capture.cancelUtterance()
@@ -531,6 +534,7 @@ final class AppModel {
         defer {
             takes.complete(take)
             parkedSamples.removeValue(forKey: take)
+            teacher?.noteDictation()
         }
         let started = Date()
         try? await Task.sleep(nanoseconds: 60_000_000)

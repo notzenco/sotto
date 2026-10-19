@@ -14,18 +14,22 @@ final class TeacherScheduler {
     private let library: ModelLibrary
     private let clips: ClipStore
     private let settings: () -> AppSettings
+    private let isDictating: () -> Bool
     private let onSubstitution: (Substitution, UUID) -> Void
     private var timer: Timer?
     private var run: Task<Void, Never>?
     private var lastDictation = Date()
     private var skipped: Set<UUID> = []
+    /// The teacher whose failed load was last logged, so a failure is logged once rather than every minute.
+    private var loggedFailure: SpeechModelID?
     private let log = Logger(subsystem: "app.sotto.desktop", category: "teacher")
 
     init(library: ModelLibrary, clips: ClipStore, settings: @escaping () -> AppSettings,
-         onSubstitution: @escaping (Substitution, UUID) -> Void) {
+         isDictating: @escaping () -> Bool, onSubstitution: @escaping (Substitution, UUID) -> Void) {
         self.library = library
         self.clips = clips
         self.settings = settings
+        self.isDictating = isDictating
         self.onSubstitution = onSubstitution
     }
 
@@ -39,13 +43,23 @@ final class TeacherScheduler {
         self.timer = timer
     }
 
-    /// A running teacher stops after its current clip.
+    /// Call when a take starts, finishes, is cancelled, and when its commit ends; idle time counts from the
+    /// latest of these. A running teacher stops after its current clip.
     func noteDictation() {
         lastDictation = Date()
     }
 
     private func check() {
         guard run == nil, let teacher = settings().teacherModel, mayContinue(with: teacher) else { return }
+        // Retry from Settings clears the failure.
+        if case .failed? = library.states[teacher] {
+            if loggedFailure != teacher {
+                loggedFailure = teacher
+                log.notice("teacher \(teacher.rawValue, privacy: .public) failed to load; waiting for Retry")
+            }
+            return
+        }
+        loggedFailure = nil
         run = Task {
             await teach(with: teacher)
             run = nil
@@ -53,14 +67,18 @@ final class TeacherScheduler {
     }
 
     /// Everything but the download check, which is async. Also checked between clips.
+    /// A teacher that is also the typing model would queue on the typing engine and delay takes, so it never runs.
     private func mayContinue(with teacher: SpeechModelID) -> Bool {
         settings().teacherModel == teacher
+            && teacher != library.typingModel
+            && !isDictating()
             && TeacherQueue.isIdle(lastDictation: lastDictation, now: Date())
             && !TeacherQueue.pending(clips.records, teacher: teacher, skipping: skipped).isEmpty
             && Self.onMainsPower()
     }
 
     private func teach(with teacher: SpeechModelID) async {
+        // withLoaded also refuses a model that isn't downloaded; checking first avoids an error log every minute.
         guard await library.isDownloaded(teacher) else { return }
         do {
             let checked = try await library.withLoaded(teacher) { [self] engine in
@@ -111,10 +129,14 @@ final class TeacherScheduler {
         }
     }
 
-    /// A Mac without a battery reports AC power. If the power state can't be read, it counts as mains.
+    /// A Mac with no power sources listed (no battery) counts as mains. A power state that can't be read
+    /// doesn't, so the teacher never runs on battery by accident.
     private static func onMainsPower() -> Bool {
-        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
-              let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() else { return true }
-        return (type as String) == kIOPMACPowerKey
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() else { return false }
+        if let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() {
+            return (type as String) == kIOPMACPowerKey
+        }
+        guard let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() else { return false }
+        return CFArrayGetCount(sources) == 0
     }
 }
