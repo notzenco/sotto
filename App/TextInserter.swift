@@ -6,7 +6,7 @@ import SottoCore
 
 enum InsertResult: Equatable, Sendable {
     case inserted
-    case kept(String)
+    case kept(TakeProblem)
 }
 
 @MainActor
@@ -42,26 +42,26 @@ final class TextInserter {
         switch route {
         case .refuse(let failure):
             switch failure {
-            case .noFocus: return .kept("no focus")
-            case .secureField, .secureInput: return .kept("password refused")
-            case .focusChanged: return .kept("focus changed")
+            case .noFocus: return .kept(.noTextField)
+            case .secureField, .secureInput: return .kept(.passwordField)
+            case .focusChanged: return .kept(.focusMoved)
             }
         case .accessibility:
             guard let element else {
-                return .kept(AXIsProcessTrusted() ? "elevated" : "Turn on Accessibility")
+                return .kept(AXIsProcessTrusted() ? .couldNotType : .accessibilityOff)
             }
             if writeSelectedText(text, to: element) { return .inserted }
             guard !captured.secureInput, !captured.isSecureField,
-                  !IsSecureEventInputEnabled() else { return .kept("could not type") }
+                  !IsSecureEventInputEnabled() else { return .kept(.couldNotType) }
             return paste(text, captured: captured, element: element,
                          restoreNanoseconds: AppIdentity.pasteRestoreNanoseconds(bundleID: captured.bundleID),
                          accessibilityAttempted: true)
         case .unicode:
             guard !captured.secureInput, !IsSecureEventInputEnabled() else {
-                return .kept("password refused")
+                return .kept(.passwordField)
             }
-            guard CGPreflightPostEventAccess() else { return .kept("Turn on Accessibility") }
-            guard let source = CGEventSource(stateID: .privateState) else { return .kept("could not type") }
+            guard CGPreflightPostEventAccess() else { return .kept(.accessibilityOff) }
+            guard let source = CGEventSource(stateID: .privateState) else { return .kept(.couldNotType) }
             let units = Array(text.utf16)
             var offset = 0
             while offset < units.count {
@@ -69,7 +69,7 @@ final class TextInserter {
                 if end < units.count, (0xD800...0xDBFF).contains(units[end - 1]) { end -= 1 }
                 guard let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
                       let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else {
-                    return .kept("could not type")
+                    return .kept(.couldNotType)
                 }
                 let chunk = Array(units[offset..<end])
                 chunk.withUnsafeBufferPointer { buffer in
@@ -153,20 +153,20 @@ final class TextInserter {
     private func paste(_ text: String, captured: FocusSnapshot, element: AXUIElement?,
                        restoreNanoseconds: UInt64, accessibilityAttempted: Bool) -> InsertResult {
         guard !captured.secureInput, !captured.isSecureField, !IsSecureEventInputEnabled() else {
-            return .kept("password refused")
+            return .kept(.passwordField)
         }
-        guard !AppIdentity.isTerminal(captured.bundleID ?? "") else { return .kept("could not type") }
+        guard !AppIdentity.isTerminal(captured.bundleID ?? "") else { return .kept(.couldNotType) }
         guard CGPreflightPostEventAccess() else {
             if captured.selectedTextSettable, let element {
                 if !accessibilityAttempted, writeSelectedText(text, to: element) { return .inserted }
-                return .kept(AXIsProcessTrusted() ? "elevated" : "Turn on Accessibility")
+                return .kept(AXIsProcessTrusted() ? .couldNotType : .accessibilityOff)
             }
-            return .kept("Turn on Accessibility")
+            return .kept(.accessibilityOff)
         }
         guard let source = CGEventSource(stateID: .privateState),
               let down = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
               let up = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) else {
-            return .kept("could not type")
+            return .kept(.couldNotType)
         }
         let previousSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
         selectABCKeyboard()
@@ -181,7 +181,7 @@ final class TextInserter {
         pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else {
             restoreClipboard(saved)
-            return .kept("could not type")
+            return .kept(.couldNotType)
         }
         let writtenCount = pasteboard.changeCount
         down.flags = .maskCommand

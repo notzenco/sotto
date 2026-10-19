@@ -465,14 +465,14 @@ final class AppModel {
         if let snapshot, snapshot.pid != 0 {
             result = await inserter.insert(formatted, captured: snapshot)
         } else {
-            result = .kept("no focus")
+            result = .kept(.noTextField)
         }
         let injected = Date()
         switch result {
         case .inserted:
             present(text: formatted, failure: nil, hold: 1.2)
-        case .kept(let reason):
-            present(text: formatted.isEmpty ? "" : formatted, failure: reason, hold: 4)
+        case .kept(let problem):
+            present(text: formatted.isEmpty ? "" : formatted, failure: problem.message, hold: 4)
         }
         lastTranscript = formatted
         settings.dictationCount += 1
