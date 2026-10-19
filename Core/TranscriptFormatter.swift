@@ -36,7 +36,10 @@ public enum TranscriptFormatter {
         }
         let rendered = render(atoms).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !rendered.isEmpty else { return "" }
-        return mode == .prose ? capitalizeSentences(rendered) : rendered
+        guard mode == .prose else { return rendered }
+        // One hold is one sentence, so finish it when the model leaves the ending off.
+        let finished = rendered.last.map { $0.isLetter || $0.isNumber } == true ? rendered + "." : rendered
+        return capitalizeSentences(finished)
     }
 
     private struct Phrase {

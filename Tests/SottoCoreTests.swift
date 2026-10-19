@@ -7,7 +7,26 @@ final class FormatterTests: XCTestCase {
             "um hello period this is sotto",
             mode: .prose
         )
-        XCTAssertEqual(text, "Hello. This is sotto")
+        XCTAssertEqual(text, "Hello. This is sotto.")
+    }
+
+    func testProseFinishesTheSentence() {
+        XCTAssertEqual(TranscriptFormatter.format("second test", mode: .prose), "Second test.")
+        XCTAssertEqual(TranscriptFormatter.format("call me at 5", mode: .prose), "Call me at 5.")
+    }
+
+    func testProseKeepsTheModelsEnding() {
+        XCTAssertEqual(TranscriptFormatter.format("What's up, my G?", mode: .prose), "What's up, my G?")
+        XCTAssertEqual(TranscriptFormatter.format("No way!", mode: .prose), "No way!")
+    }
+
+    func testProseLeavesASpokenOpenEndingAlone() {
+        XCTAssertEqual(TranscriptFormatter.format("well comma", mode: .prose), "Well,")
+        XCTAssertEqual(TranscriptFormatter.format("shopping list colon", mode: .prose), "Shopping list:")
+    }
+
+    func testLiteralIsNotFinished() {
+        XCTAssertEqual(TranscriptFormatter.format("git status", mode: .literal), "git status")
     }
 
     func testProseQuestion() {
