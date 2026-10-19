@@ -52,8 +52,17 @@ actor HintBooster {
         guard let output = await session.rescore(text: text, tokenTimings: tokenTimings, audioSamples: samples),
               output.wasModified
         else { return text }
-        let rescored = output.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return rescored.isEmpty ? text : rescored
+        // FluidAudio's own output text drops punctuation attached to replaced words, so apply its spans to `text`.
+        let replacements = output.replacements.compactMap { result in
+            result.shouldReplace
+                ? result.replacementWord.map { HintSpanReplacer.Replacement(original: result.originalWord, replacement: $0) }
+                : nil
+        }
+        guard let hinted = HintSpanReplacer.apply(replacements, to: text) else {
+            log.error("hint_booster span not found, take left unhinted")
+            return text
+        }
+        return hinted
     }
 
     /// The session for `hints`, or nil while one is being prepared. Starts the download or rebuild if needed.
