@@ -10,9 +10,9 @@
 		00E468A4C2FBAC018637E0F6 /* LevelMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF82C7764642BCB684DCED3A /* LevelMeter.swift */; };
 		0E0C6086CA272055FE3F67B7 /* IndicatorPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAAC779A124F6D45D82BB6A /* IndicatorPane.swift */; };
 		1C5346D389F5F7EF42676B92 /* SottoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */; };
+		231CDDE5AE03832A8CAB78F2 /* EngineFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9713B7DFD3531EC7590B781B /* EngineFactory.swift */; };
 		24243F453447EF048555ABDC /* PreRoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC9DFB9E59867B138ECB963 /* PreRoll.swift */; };
 		32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0074DE2D414298885D2E37C /* AppModel.swift */; };
-		37E242D50D3BCD70FFFAD52B /* ParakeetEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A4CDE6531DDDA4BF1193E1 /* ParakeetEngine.swift */; };
 		42A582125F7EA187A16962E3 /* Shortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2972BAE3073E24FE76A2C05F /* Shortcuts.swift */; };
 		4878233232B096BD8C6EA6A1 /* InsertJoinTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 778BA147FB881AB9549E3F0F /* InsertJoinTests.swift */; };
 		48F5731364F01F2AD65BE690 /* Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5889C01D01EA2919CEEE8F /* Indicator.swift */; };
@@ -23,9 +23,11 @@
 		6BA0AA7A68B35E9A7996B2C4 /* AudioCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E71DF31D84CE231B9FA7FA5 /* AudioCapture.swift */; };
 		71374BD8199107BE4905ABA2 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1AFEEAA4135B21CE61AF91D /* MenuBarController.swift */; };
 		74178EFD8405D4088476696E /* TakeLedgerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 964D32C039B13AA0F715F8AD /* TakeLedgerTests.swift */; };
+		7A4B87E5780216DDD21C2158 /* ParakeetFamilyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB7A2BFB14F6BAB56E44F5FA /* ParakeetFamilyEngine.swift */; };
 		82EACDF40B18CC57E2C91FDC /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9806589D518EE301F802AB7C /* Settings.swift */; };
 		83AC2A1F6D54B8436FB25CA5 /* SettingsActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FA6E786308939E2A1DC342 /* SettingsActivity.swift */; };
 		86204792EA840D6325133A32 /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5739DF1027512112F7341E /* AppIdentity.swift */; };
+		8B5947C94E3F62A652E3463E /* ModelLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5365556A9B617C9B5FE64D /* ModelLibrary.swift */; };
 		8BBECFBABF54EE036EF9B0C1 /* libSottoCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3F6DE0D49F84C5997837AD5B /* libSottoCore.a */; };
 		8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FE419E15D6C5EB42A0D6D49 /* HotkeyMonitor.swift */; };
 		8C4D2B196DA47240462BCB76 /* SpeechCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A237EBD0DD20CBB88E92A9 /* SpeechCatalogTests.swift */; };
@@ -55,6 +57,7 @@
 		E45626642DBF24EA8F24EE78 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */; };
 		E5F8DB2356A832E04C3C6EBD /* Stores.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC51D3A5933645C7B14C2D9 /* Stores.swift */; };
 		E6F4A00E9BBAAE9429D28557 /* SettingsWindowVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDDCC4D67F3362F90A402CB /* SettingsWindowVisibility.swift */; };
+		EA0DEA70A14B0FA8143EB492 /* SpeechEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFC51471F761FC00D312687 /* SpeechEngine.swift */; };
 		EE8A4B8E715D4A2760EAB6D7 /* IndicatorBars.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03BC7AF4D922FBD8E6583E67 /* IndicatorBars.swift */; };
 		F62814C1280CD5A67506366D /* HoldTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28035B2F64D20BFBB7C8BE7 /* HoldTracker.swift */; };
 		F63FAD9095740CCE88CC4DC8 /* LiveLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CB0D3AFB6135CF0F2A5770D /* LiveLine.swift */; };
@@ -101,17 +104,19 @@
 		5BC51D3A5933645C7B14C2D9 /* Stores.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Stores.swift; sourceTree = "<group>"; };
 		5CA740A9B9A7B3FE44E22634 /* TextInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextInserter.swift; sourceTree = "<group>"; };
 		6246DCF13B70F582CB595FEC /* RightCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RightCommand.swift; sourceTree = "<group>"; };
+		6FFC51471F761FC00D312687 /* SpeechEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechEngine.swift; sourceTree = "<group>"; };
 		778BA147FB881AB9549E3F0F /* InsertJoinTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertJoinTests.swift; sourceTree = "<group>"; };
+		7A5365556A9B617C9B5FE64D /* ModelLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLibrary.swift; sourceTree = "<group>"; };
 		7F9A36D846BD703AB4954B1B /* SottoCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SottoCoreTests.swift; sourceTree = "<group>"; };
 		7FE419E15D6C5EB42A0D6D49 /* HotkeyMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyMonitor.swift; sourceTree = "<group>"; };
 		87B9140A6F898B43FFB6F88F /* MenuIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuIcon.swift; sourceTree = "<group>"; };
 		8E5889C01D01EA2919CEEE8F /* Indicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Indicator.swift; sourceTree = "<group>"; };
 		964D32C039B13AA0F715F8AD /* TakeLedgerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TakeLedgerTests.swift; sourceTree = "<group>"; };
+		9713B7DFD3531EC7590B781B /* EngineFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineFactory.swift; sourceTree = "<group>"; };
 		9806589D518EE301F802AB7C /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		9E71DF31D84CE231B9FA7FA5 /* AudioCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCapture.swift; sourceTree = "<group>"; };
 		9E92379DF801F9A016518C4A /* Permissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permissions.swift; sourceTree = "<group>"; };
 		A1AFEEAA4135B21CE61AF91D /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
-		A2A4CDE6531DDDA4BF1193E1 /* ParakeetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetEngine.swift; sourceTree = "<group>"; };
 		ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorLayoutTests.swift; sourceTree = "<group>"; };
 		AE61DCB226B0C65E163CAA33 /* IndicatorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorPanel.swift; sourceTree = "<group>"; };
 		B0983FCA9D8EBA83EA2B4201 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
@@ -128,6 +133,7 @@
 		E5116FE79B77BF583CAC1073 /* SpeechCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechCatalog.swift; sourceTree = "<group>"; };
 		E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelMeterTests.swift; sourceTree = "<group>"; };
 		EB4B7EDCD7AE1E97CDB6CB6D /* SettingsActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsActivityTests.swift; sourceTree = "<group>"; };
+		EB7A2BFB14F6BAB56E44F5FA /* ParakeetFamilyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetFamilyEngine.swift; sourceTree = "<group>"; };
 		F7D348ACDDD1E00CFB8160D3 /* DictationMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationMode.swift; sourceTree = "<group>"; };
 		FA59C0C65E31DFD24ABA51B2 /* Sotto.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sotto.entitlements; sourceTree = "<group>"; };
 		FC97FED2709B3D89E7214074 /* SettingsPanes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanes.swift; sourceTree = "<group>"; };
@@ -238,6 +244,17 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		C77C4E24DF7FAB680C189C06 /* Speech */ = {
+			isa = PBXGroup;
+			children = (
+				9713B7DFD3531EC7590B781B /* EngineFactory.swift */,
+				7A5365556A9B617C9B5FE64D /* ModelLibrary.swift */,
+				EB7A2BFB14F6BAB56E44F5FA /* ParakeetFamilyEngine.swift */,
+				6FFC51471F761FC00D312687 /* SpeechEngine.swift */,
+			);
+			path = Speech;
+			sourceTree = "<group>";
+		};
 		FF734C53B046401A82CA4493 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -248,7 +265,6 @@
 				5A4870298925DCD619A1F38B /* MainMenu.swift */,
 				A1AFEEAA4135B21CE61AF91D /* MenuBarController.swift */,
 				87B9140A6F898B43FFB6F88F /* MenuIcon.swift */,
-				A2A4CDE6531DDDA4BF1193E1 /* ParakeetEngine.swift */,
 				9E92379DF801F9A016518C4A /* Permissions.swift */,
 				2972BAE3073E24FE76A2C05F /* Shortcuts.swift */,
 				FA59C0C65E31DFD24ABA51B2 /* Sotto.entitlements */,
@@ -257,6 +273,7 @@
 				5CA740A9B9A7B3FE44E22634 /* TextInserter.swift */,
 				6CF0D05FEBDE687CEFEC2A19 /* Indicator */,
 				56C2C0B5812A9FE87AD52BCB /* Settings */,
+				C77C4E24DF7FAB680C189C06 /* Speech */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -397,6 +414,7 @@
 				32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */,
 				6BA0AA7A68B35E9A7996B2C4 /* AudioCapture.swift in Sources */,
 				B8EA527806C11142C8E7889B /* CaretLocator.swift in Sources */,
+				231CDDE5AE03832A8CAB78F2 /* EngineFactory.swift in Sources */,
 				8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */,
 				0E0C6086CA272055FE3F67B7 /* IndicatorPane.swift in Sources */,
 				9ED6EB01579F5DD0F43475E5 /* IndicatorPanel.swift in Sources */,
@@ -405,7 +423,8 @@
 				C726C9C1C42157BDA8F583A9 /* MainMenu.swift in Sources */,
 				71374BD8199107BE4905ABA2 /* MenuBarController.swift in Sources */,
 				C5A154E00B6E0BDC275D8DF3 /* MenuIcon.swift in Sources */,
-				37E242D50D3BCD70FFFAD52B /* ParakeetEngine.swift in Sources */,
+				8B5947C94E3F62A652E3463E /* ModelLibrary.swift in Sources */,
+				7A4B87E5780216DDD21C2158 /* ParakeetFamilyEngine.swift in Sources */,
 				ABD11B9B0E8A8B41099C413E /* Permissions.swift in Sources */,
 				96A0F53B1A88C1F1939099C8 /* SettingsPanes.swift in Sources */,
 				B17F68664A096EC4701BF680 /* SettingsView.swift in Sources */,
@@ -413,6 +432,7 @@
 				E6F4A00E9BBAAE9429D28557 /* SettingsWindowVisibility.swift in Sources */,
 				42A582125F7EA187A16962E3 /* Shortcuts.swift in Sources */,
 				1C5346D389F5F7EF42676B92 /* SottoApp.swift in Sources */,
+				EA0DEA70A14B0FA8143EB492 /* SpeechEngine.swift in Sources */,
 				E5F8DB2356A832E04C3C6EBD /* Stores.swift in Sources */,
 				A2CE2F4CE4B246B38401A9EB /* TextInserter.swift in Sources */,
 			);

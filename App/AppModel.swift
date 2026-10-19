@@ -18,7 +18,6 @@ final class AppModel {
     var settings: AppSettings
     var rulebook: Rulebook
     var history: [HistoryEntry]
-    var modelPhase: ModelPhase = .missing
     var listening = false
     var inputLevel: Float = 0
     private(set) var settingsActivity = SettingsActivity()
@@ -28,6 +27,9 @@ final class AppModel {
     private(set) var loginRequiresApproval = SMAppService.mainApp.status == .requiresApproval
     var microphones: [InputDevice] = []
     var lastTranscript = ""
+    let library: ModelLibrary
+
+    var modelPhase: ModelPhase { library.typingPhase }
 
     var modelStatusLine: String {
         switch modelPhase {
@@ -40,7 +42,6 @@ final class AppModel {
     private var hold = HoldTracker()
     private let capture = AudioCapture()
     private var levelWatchers: Set<LevelWatcher> = []
-    private let engine = ParakeetEngine()
     private let live = LiveLine()
     private let inserter = TextInserter()
     private let hotkeys = HotkeyMonitor()
@@ -64,9 +65,11 @@ final class AppModel {
     private let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     init() {
-        settings = LocalStore.loadSettings()
+        let settings = LocalStore.loadSettings()
+        self.settings = settings
         rulebook = LocalStore.loadRulebook()
         history = LocalStore.loadHistory()
+        library = ModelLibrary(typingModel: settings.typingModel, spelling: settings.spelling)
         indicator.apply(settings.indicator)
         indicator.onHide = { [weak self] in
             self?.setLevelWatching(false, for: .indicator)
@@ -115,8 +118,8 @@ final class AppModel {
         }
         syncHotkeySource()
         watchHotkey()
-        modelPhase = .downloading
-        Task { modelPhase = await engine.prepare() }
+        library.refreshDownloadStates()
+        Task { await library.prepareTypingModel() }
     }
 
     func setLevelWatching(_ on: Bool, for watcher: LevelWatcher) {
@@ -327,8 +330,7 @@ final class AppModel {
     }
 
     func retryModel() {
-        modelPhase = .downloading
-        Task { modelPhase = await engine.prepare() }
+        Task { await library.prepareTypingModel() }
     }
 
     func setKeepFirstSyllable(_ value: Bool) {
@@ -478,8 +480,7 @@ final class AppModel {
 
         let transcriptTask = Task { @MainActor () -> String? in
             guard self.takes.allowsInsertion(take), self.modelPhase == .ready else { return nil }
-            do { return try await self.engine.transcribe(samples) }
-            catch { return nil }
+            return await self.library.transcribeTyping(samples, hints: [])?.hinted
         }
         let appleTask = Task { @MainActor () -> String in
             guard self.takes.allowsInsertion(take) else { return "" }
