@@ -153,4 +153,17 @@ final class LearningTests: XCTestCase {
         let lexicon = try JSONDecoder().decode(Lexicon.self, from: Data(#"{"entries": [\#(word)]}"#.utf8))
         XCTAssertEqual(lexicon, Lexicon(entries: [decoded]))
     }
+
+    func testUnreadableLexiconEntriesAreDroppedAlone() throws {
+        let json = """
+        {"entries": [
+          {"written": "my G", "heardForms": ["margie"], "sources": ["fix"], "count": 1, "learned": true},
+          {"written": "Sotto", "sources": ["telepathy"]},
+          {"heardForms": ["no written form"]}
+        ], "yourWords": ["Sotto"]}
+        """
+        let lexicon = try JSONDecoder().decode(Lexicon.self, from: Data(json.utf8))
+        XCTAssertEqual(lexicon.entries.map(\.written), ["my G"])
+        XCTAssertEqual(lexicon.yourWords, ["Sotto"])
+    }
 }

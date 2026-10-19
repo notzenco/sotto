@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SottoCore
+import os
 
 /// Kept dictation audio: `<id>.f32` (little-endian Float32 samples at 16 kHz) plus `<id>.json` per clip.
 /// The record list lives on the main actor; file writes and deletes run in order on a background queue,
@@ -12,6 +13,7 @@ final class ClipStore {
 
     @ObservationIgnored private let directory: URL
     @ObservationIgnored private let files: DispatchQueue
+    private nonisolated static let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     /// Reads every readable record. Unreadable files are skipped.
     init(directory: URL) {
@@ -21,14 +23,22 @@ final class ClipStore {
         records = Self.readRecords(in: directory)
     }
 
+    /// A clip whose files can't be written is logged and dropped from `records`.
     func save(samples: [Float], record: ClipRecord) {
         records.append(record)
-        let audio = audioURL(record.id)
-        let json = recordURL(record.id)
-        files.async {
-            // Audio first, so a record on disk always has its audio.
-            guard (try? Self.encode(samples).write(to: audio, options: .atomic)) != nil else { return }
-            Self.write(record, to: json)
+        let id = record.id
+        let audio = audioURL(id)
+        let json = recordURL(id)
+        files.async { [weak self] in
+            do {
+                // Audio first, so a record on disk always has its audio.
+                try Self.encode(samples).write(to: audio, options: .atomic)
+                try Self.write(record, to: json)
+            } catch {
+                Self.log.error("clip not saved: \(error.localizedDescription, privacy: .public)")
+                try? FileManager.default.removeItem(at: audio)
+                Task { @MainActor in self?.records.removeAll { $0.id == id } }
+            }
         }
     }
 
@@ -45,7 +55,10 @@ final class ClipStore {
         guard let index = records.firstIndex(where: { $0.id == record.id }) else { return }
         records[index] = record
         let json = recordURL(record.id)
-        files.async { Self.write(record, to: json) }
+        files.async {
+            do { try Self.write(record, to: json) }
+            catch { Self.log.error("clip record not updated: \(error.localizedDescription, privacy: .public)") }
+        }
     }
 
     /// Deletes clips older than the retention period, plus stray files of that age that no record describes.
@@ -110,9 +123,8 @@ final class ClipStore {
             .sorted { $0.date < $1.date }
     }
 
-    private nonisolated static func write(_ record: ClipRecord, to url: URL) {
-        guard let data = try? JSONEncoder().encode(record) else { return }
-        try? data.write(to: url, options: .atomic)
+    private nonisolated static func write(_ record: ClipRecord, to url: URL) throws {
+        try JSONEncoder().encode(record).write(to: url, options: .atomic)
     }
 
     private nonisolated static func encode(_ samples: [Float]) -> Data {

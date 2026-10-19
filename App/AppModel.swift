@@ -125,9 +125,12 @@ final class AppModel {
         library.refreshDownloadStates()
         Task { await library.prepareTypingModel() }
         clips.prune(now: Date())
-        // Builds the spelling tables now rather than during the first dictation.
-        let spelling = settings.spelling
-        Task.detached(priority: .utility) { _ = SpellingConverter.convert("color", to: spelling) }
+        warmSpelling(settings.spelling)
+    }
+
+    /// Builds the spelling tables now rather than during the next dictation.
+    private func warmSpelling(_ variety: SpellingVariety) {
+        Task.detached(priority: .utility) { _ = SpellingConverter.convert("color", to: variety) }
     }
 
     func setLevelWatching(_ on: Bool, for watcher: LevelWatcher) {
@@ -405,6 +408,7 @@ final class AppModel {
         settings.spelling = variety
         LocalStore.save(settings: settings)
         library.setSpelling(variety)
+        warmSpelling(variety)
     }
 
     /// Typing stays on the current model until the new one is ready.
@@ -571,11 +575,11 @@ final class AppModel {
         }
         let mode = settings.modeOverride ?? AppIdentity.defaultMode(bundleID: snapshot?.bundleID, domain: domain)
         var formatted = TranscriptFormatter.format(heard.hinted, mode: mode)
-        if mode == .prose {
-            formatted = SpellingConverter.convert(formatted, to: settings.spelling)
-        }
-        // The owner's Names win over spelling.
-        formatted = rulebook.applying(to: formatted)
+        let spelling = settings.spelling
+        let respell: (String) -> String = mode == .prose ? { SpellingConverter.convert($0, to: spelling) } : { $0 }
+        formatted = respell(formatted)
+        // The owner's Names win over spelling, so each heard form also matches its respelled form.
+        formatted = rulebook.applying(to: formatted, alsoMatching: respell)
         guard !formatted.isEmpty else {
             present(.problem(.notHeard), take: take)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
