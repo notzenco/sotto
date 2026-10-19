@@ -16,10 +16,12 @@ public struct ScreenGeometry: Equatable, Sendable {
 public struct IndicatorPlacement: Equatable, Sendable {
     public var body: CGRect
     public var caption: CGRect?
+    public var effectiveStyle: IndicatorStyle
 
-    public init(body: CGRect, caption: CGRect?) {
+    public init(body: CGRect, caption: CGRect?, effectiveStyle: IndicatorStyle) {
         self.body = body
         self.caption = caption
+        self.effectiveStyle = effectiveStyle
     }
 }
 
@@ -98,7 +100,7 @@ public enum IndicatorLayout {
                               y: above ? body.maxY + captionGap : body.minY - captionGap - size.height,
                               width: size.width, height: size.height)
             }
-            return IndicatorPlacement(body: body, caption: caption)
+            return IndicatorPlacement(body: body, caption: caption, effectiveStyle: style)
         }
 
         var result = placement(at: position)
@@ -108,6 +110,10 @@ public enum IndicatorLayout {
             let occupied = result.caption.map { result.body.union($0) } ?? result.body
             if occupied.intersects(band) {
                 if style == .notch {
+                    if result.body.intersects(band) {
+                        return place(body: body, caption: caption, style: .pill, position: .bottom,
+                                     screen: screen, caret: caret)
+                    }
                     if let caption = result.caption {
                         result.caption?.origin.y = band.minY - captionGap - caption.height
                     }
@@ -127,6 +133,14 @@ public enum IndicatorLayout {
             return rect
         }
         result.body = contained(result.body)
+        if style == .dot, var caption = result.caption {
+            // Anchor to the contained dot, choosing the left side at the right edge.
+            caption.origin.x = result.body.maxX + captionGap
+            if caption.maxX > screen.visibleFrame.maxX {
+                caption.origin.x = result.body.minX - captionGap - caption.width
+            }
+            result.caption = caption
+        }
         result.caption = result.caption.map(contained)
         return result
     }

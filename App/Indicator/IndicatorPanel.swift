@@ -58,6 +58,7 @@ final class IndicatorPanel {
             return
         }
         if case .listening = phase {
+            state.effectiveStyle = nil
             state.words = ""
             state.level = 0
             selectScreen(caret: CaretLocator.caretRect())
@@ -106,6 +107,7 @@ final class IndicatorPanel {
 
     private func hide() {
         state.phase = .hidden
+        state.effectiveStyle = nil
         panel.orderOut(nil)
         screen = nil
         caret = nil
@@ -136,12 +138,20 @@ final class IndicatorPanel {
         guard let screen else { return }
         let placement = IndicatorLayout.place(
             body: IndicatorView.bodySize(for: state), caption: IndicatorView.captionSize(for: state),
-            style: state.settings.style, position: state.settings.position, screen: screen, caret: caret
+            style: state.style, position: state.effectiveStyle == nil ? state.settings.position : .bottom,
+            screen: screen, caret: caret
         )
+        if placement.effectiveStyle != state.style {
+            // Keep the fallback for the take and measure the actual pill, without saving a setting.
+            state.effectiveStyle = placement.effectiveStyle
+            place()
+            return
+        }
         let frame = placement.caption.map { placement.body.union($0) } ?? placement.body
         let local = IndicatorPlacement(
             body: placement.body.offsetBy(dx: -frame.minX, dy: -frame.minY),
-            caption: placement.caption?.offsetBy(dx: -frame.minX, dy: -frame.minY)
+            caption: placement.caption?.offsetBy(dx: -frame.minX, dy: -frame.minY),
+            effectiveStyle: placement.effectiveStyle
         )
         panel.setFrame(frame, display: true)
         host.frame = CGRect(origin: .zero, size: frame.size)

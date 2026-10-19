@@ -10,6 +10,8 @@ final class IndicatorState {
     var level: Float = 0
     var words = ""
     var settings = IndicatorSettings()
+    var effectiveStyle: IndicatorStyle?
+    var style: IndicatorStyle { effectiveStyle ?? settings.style }
     var notch: CGRect? = nil
 }
 
@@ -33,7 +35,7 @@ struct IndicatorView: View {
                 if let placement {
                     placedContent(placement)
                 } else {
-                    switch state.settings.style {
+                    switch state.style {
                     case .pill:
                         VStack(spacing: IndicatorLayout.captionGap) {
                             if state.settings.position != .top { captionContent }
@@ -82,7 +84,7 @@ struct IndicatorView: View {
         case .hidden, .cancelled:
             EmptyView()
         default:
-            switch state.settings.style {
+            switch state.style {
             case .pill: pill
             case .notch: notch
             case .dot: dot
@@ -110,7 +112,7 @@ struct IndicatorView: View {
         default: break
         }
         let scale = scale(for: state)
-        switch state.settings.style {
+        switch state.style {
         case .pill:
             let width: CGFloat
             switch state.phase {
@@ -154,7 +156,7 @@ struct IndicatorView: View {
     private var barColor: Color { state.settings.barColor.color }
     private var level: Double { state.level.isFinite ? Double(min(1, max(0, state.level))) : 0 }
     private var ink: Color {
-        state.settings.style == .pill && state.settings.background == .light
+        state.style == .pill && state.settings.background == .light
             ? Color(.sRGB, red: 0.11, green: 0.11, blue: 0.12, opacity: 1)
             : RGBColor.paper.color
     }

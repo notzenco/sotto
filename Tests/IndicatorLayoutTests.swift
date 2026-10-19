@@ -135,13 +135,42 @@ final class IndicatorLayoutTests: XCTestCase {
                        CGRect(x: 714, y: 76, width: 84, height: 24))
     }
 
-    func testCaretBodyAndCaptionShiftIndependentlyInsideVisibleFrame() {
+    func testCaretDotCaptionMovesToTheLeftInsideVisibleFrame() {
         let result = place(caption: CGSize(width: 200, height: 18), style: .dot, position: .caret,
                            caret: CGRect(x: 1500, y: 500, width: 0, height: 18))
         XCTAssertEqual(result.body, CGRect(x: 1428, y: 468, width: 84, height: 24))
-        XCTAssertEqual(result.caption, CGRect(x: 1312, y: 471, width: 200, height: 18))
+        XCTAssertEqual(result.caption, CGRect(x: 1222, y: 471, width: 200, height: 18))
         let left = place(position: .caret, caret: CGRect(x: 1, y: 500, width: 0, height: 18))
         XCTAssertEqual(left.body.minX, 0)
+    }
+
+    func testNotchBodyCoveringFullscreenCaretFallsBackToBottomPill() {
+        let screen = ScreenGeometry(
+            frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1920, height: 1055), notch: nil
+        )
+        let result = IndicatorLayout.place(
+            body: CGSize(width: 96, height: 24), caption: nil,
+            style: .notch, position: .top, screen: screen,
+            caret: CGRect(x: 950, y: 1060, width: 0, height: 18)
+        )
+        XCTAssertEqual(result.effectiveStyle, .pill)
+        XCTAssertEqual(result.body, CGRect(x: 912, y: 16, width: 96, height: 24))
+        let band = CGRect(x: 0, y: 1058, width: 1920, height: 22)
+        XCTAssertFalse(result.body.intersects(band))
+    }
+
+    func testDotAndCaptionDoNotOverlapNearRightEdge() throws {
+        let result = place(body: CGSize(width: 50, height: 50),
+                           caption: CGSize(width: 200, height: 20),
+                           style: .dot, position: .caret,
+                           caret: CGRect(x: 1500, y: 500, width: 0, height: 18))
+        let caption = try XCTUnwrap(result.caption)
+        XCTAssertEqual(result.body, CGRect(x: 1462, y: 442, width: 50, height: 50))
+        XCTAssertFalse(result.body.intersects(caption))
+        XCTAssertEqual(result.body.minX - caption.maxX, IndicatorLayout.captionGap)
+        XCTAssertGreaterThanOrEqual(caption.minX, s.visibleFrame.minX)
+        XCTAssertLessThanOrEqual(caption.maxX, s.visibleFrame.maxX)
     }
 
     func testInvalidCaretPlacementFallsBackToBottom() {
