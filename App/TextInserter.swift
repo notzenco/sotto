@@ -72,9 +72,12 @@ final class TextInserter {
         let cursor = cursorBefore
         cursorBefore = nil
         let result = await deliver(text, captured: captured, isAllowed: isAllowed)
-        if result == .inserted, let element = focusedElement() {
-            let offset = cursor.flatMap { CFEqual($0.element, element) ? $0.location : nil }
-            lastInsertion = (element, text, offset, Date())
+        if result == .inserted {
+            // Without the element, forget the older insertion too, so it isn't watched again as this one.
+            lastInsertion = focusedElement().map { element in
+                let offset = cursor.flatMap { CFEqual($0.element, element) ? $0.location : nil }
+                return (element, text, offset, Date())
+            }
         }
         return result
     }

@@ -505,7 +505,6 @@ final class AppModel {
             postRollTake = nil
         }
         if !engineRunning { startEngine() }
-        fixWatcher.check()
         captured = inserter.captureFocus()
         capturedDomain = inserter.lastDomain
         capture.beginUtterance()
@@ -515,6 +514,8 @@ final class AppModel {
         }
         setLevelWatching(true, for: .indicator)
         indicator.show(.listening(handsFree: locked))
+        // After beginTake returns, so a slow field read can't delay capture starting.
+        Task { [weak self] in self?.fixWatcher.check() }
     }
 
     private func provisional(_ text: String) {
