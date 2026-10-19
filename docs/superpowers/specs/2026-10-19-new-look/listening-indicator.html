@@ -1,0 +1,148 @@
+<style>
+  .scene { position: relative; width: 100%; height: 100%; overflow: hidden;
+    background: radial-gradient(120% 90% at 20% 10%, #3b4a7a 0%, #1f2440 45%, #12131f 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .menubar { position: absolute; inset: 0 0 auto 0; height: 14px; background: rgba(20,20,28,.55);
+    backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
+  .menubar .l, .menubar .r { display: flex; gap: 6px; }
+  .menubar i { display: block; width: 14px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.45); }
+  .menubar .r i { width: 6px; height: 6px; border-radius: 50%; }
+  .notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 56px; height: 14px;
+    background: #000; border-radius: 0 0 7px 7px; z-index: 3; }
+  .window { position: absolute; left: 10%; top: 19%; width: 80%; height: 60%; background: #232428;
+    border-radius: 7px; box-shadow: 0 8px 24px rgba(0,0,0,.45); overflow: hidden; }
+  .win-bar { height: 12px; display: flex; gap: 4px; align-items: center; padding: 0 6px; background: #1b1c1f; }
+  .win-bar i { width: 5px; height: 5px; border-radius: 50%; background: #55565c; }
+  .chat { padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .msg { display: flex; gap: 5px; align-items: flex-start; }
+  .msg b { width: 12px; height: 12px; border-radius: 50%; flex: none; background: #5865f2; }
+  .msg:nth-child(2) b { background: #3ba55d; }
+  .msg span { font-size: 8px; line-height: 1.35; color: #dbdee1; }
+  .field { position: absolute; left: 8px; right: 8px; bottom: 7px; height: 18px; border-radius: 5px; background: #383a40;
+    display: flex; align-items: center; padding: 0 6px; font-size: 8px; color: #f2f3f5; white-space: nowrap; overflow: hidden; }
+  .field .ph { color: #8e9297; }
+  .caret { width: 1px; height: 10px; background: #f2f3f5; margin-left: 1px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Shared indicator pieces */
+  .ind { position: absolute; z-index: 4; display: flex; align-items: center; justify-content: center;
+    background: #0b0b0c; transition: width .35s ease, opacity .35s ease, transform .35s ease; }
+  .ind .bars, .ind .dots, .ind .check { position: absolute; display: flex; align-items: center; justify-content: center;
+    gap: 2px; transition: opacity .25s ease; opacity: 0; }
+  .bars span { display: block; width: 2px; height: 14px; border-radius: 1px; background: #f4efe6; transform-origin: center; }
+  .dots span { width: 3px; height: 3px; border-radius: 50%; background: #f4efe6; animation: pulse 1s ease-in-out infinite; }
+  .dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
+  @keyframes pulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  .check { color: #7ee0a1; font-size: 10px; font-weight: 700; }
+  .ind[data-phase="listen"] .bars, .ind[data-phase="think"] .dots, .ind[data-phase="done"] .check { opacity: 1; }
+  .ind[data-phase="gone"] { opacity: 0; }
+
+  /* A and C: bottom pill */
+  .pill { left: 50%; bottom: 6%; height: 20px; width: 78px; border-radius: 10px; transform: translateX(-50%);
+    border: 1px solid rgba(255,255,255,.12); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  .pill[data-phase="think"] { width: 46px; } .pill[data-phase="done"] { width: 32px; }
+  .pill[data-phase="gone"] { transform: translateX(-50%) scale(.7); }
+
+  /* B: grows out of the notch */
+  .notch-ind { top: 0; left: 50%; transform: translateX(-50%); height: 20px; width: 56px; border-radius: 0 0 10px 10px; }
+  .notch-ind[data-phase="listen"] { width: 128px; } .notch-ind[data-phase="think"] { width: 96px; }
+  .notch-ind[data-phase="done"] { width: 80px; } .notch-ind[data-phase="gone"] { width: 56px; height: 14px; opacity: 1; }
+  .notch-ind .bars { right: 10px; } .notch-ind .dots, .notch-ind .check { right: 12px; }
+  .notch-ind .rec { position: absolute; left: 11px; width: 5px; height: 5px; border-radius: 50%; background: #ff5f57;
+    opacity: 0; transition: opacity .25s; }
+  .notch-ind[data-phase="listen"] .rec { opacity: 1; }
+
+  /* C: live words above the pill */
+  .caption { position: absolute; left: 50%; bottom: calc(6% + 25px); transform: translateX(-50%); max-width: 82%;
+    padding: 3px 7px; border-radius: 6px; background: rgba(11,11,12,.72); color: rgba(244,239,230,.85);
+    font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 4; transition: opacity .3s; }
+  .caption:empty { opacity: 0; }
+</style>
+
+<h2>How should Sotto look while it's listening?</h2>
+<p class="subtitle">Each one loops: you talking → working it out → text lands in the chat box. Click the one that feels right (or more than one if you like parts of each).</p>
+
+<div class="cards">
+  <div class="card" data-choice="pill" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="scene">
+      <div class="menubar"><div class="l"><i></i><i></i><i></i></div><div class="r"><i></i><i></i></div></div>
+      <div class="notch"></div>
+      <div class="window"><div class="win-bar"><i></i><i></i><i></i></div>
+        <div class="chat"><div class="msg"><b></b><span>anyone keen tonight?</span></div><div class="msg"><b></b><span>yeah maybe, after work</span></div></div>
+        <div class="field"><span class="typed"></span><span class="caret"></span></div></div>
+      <div class="ind pill"><div class="bars"></div><div class="dots"><span></span><span></span><span></span></div><div class="check">✓</div></div>
+    </div></div>
+    <div class="card-body"><h3>A · Pill</h3><p>A small black capsule at the bottom of the screen. The bars move with your voice. Closest to Wispr Flow.</p></div>
+  </div>
+
+  <div class="card" data-choice="notch" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="scene">
+      <div class="menubar"><div class="l"><i></i><i></i><i></i></div><div class="r"><i></i><i></i></div></div>
+      <div class="notch"></div>
+      <div class="window"><div class="win-bar"><i></i><i></i><i></i></div>
+        <div class="chat"><div class="msg"><b></b><span>anyone keen tonight?</span></div><div class="msg"><b></b><span>yeah maybe, after work</span></div></div>
+        <div class="field"><span class="typed"></span><span class="caret"></span></div></div>
+      <div class="ind notch-ind"><div class="rec"></div><div class="bars"></div><div class="dots"><span></span><span></span><span></span></div><div class="check">✓</div></div>
+    </div></div>
+    <div class="card-body"><h3>B · From the notch</h3><p>Grows out of the camera notch at the top, like the iPhone's Dynamic Island. Never covers what you're typing in.</p></div>
+  </div>
+
+  <div class="card" data-choice="pill-words" onclick="toggleSelect(this)">
+    <div class="card-image"><div class="scene">
+      <div class="menubar"><div class="l"><i></i><i></i><i></i></div><div class="r"><i></i><i></i></div></div>
+      <div class="notch"></div>
+      <div class="window"><div class="win-bar"><i></i><i></i><i></i></div>
+        <div class="chat"><div class="msg"><b></b><span>anyone keen tonight?</span></div><div class="msg"><b></b><span>yeah maybe, after work</span></div></div>
+        <div class="field"><span class="typed"></span><span class="caret"></span></div></div>
+      <div class="caption"></div>
+      <div class="ind pill"><div class="bars"></div><div class="dots"><span></span><span></span><span></span></div><div class="check">✓</div></div>
+    </div></div>
+    <div class="card-body"><h3>C · Pill with words</h3><p>The same capsule, with your words appearing faintly above it as you talk, so you can see it's hearing you right.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const BARS = 14;
+  document.querySelectorAll('.bars').forEach(function (el) {
+    for (let i = 0; i < BARS; i++) el.appendChild(document.createElement('span'));
+  });
+  const text = "yo what's up my G, keen for a servo run this arvo?";
+  const words = text.split(' ');
+  const LISTEN = 3800, THINK = 4900, DONE = 5900, CYCLE = 7200;
+  const start = performance.now();
+  let level = 0, target = 0, nextChange = 0;
+
+  function frame(now) {
+    const t = (now - start) % CYCLE;
+    const phase = t < LISTEN ? 'listen' : t < THINK ? 'think' : t < DONE ? 'done' : 'gone';
+
+    // Speech-like loudness: syllable bursts with short gaps.
+    if (now > nextChange) {
+      target = Math.random() < 0.2 ? 0.1 : 0.35 + Math.random() * 0.65;
+      nextChange = now + 80 + Math.random() * 170;
+    }
+    level += (target - level) * 0.22;
+
+    document.querySelectorAll('.ind').forEach(function (el) { el.dataset.phase = phase; });
+    document.querySelectorAll('.bars').forEach(function (group) {
+      Array.prototype.forEach.call(group.children, function (bar, i) {
+        const mid = (BARS - 1) / 2;
+        const shape = 1 - (Math.abs(i - mid) / mid) * 0.55;
+        const h = phase === 'listen' ? Math.max(0.14, level * shape * (0.65 + Math.random() * 0.55)) : 0.14;
+        bar.style.transform = 'scaleY(' + h.toFixed(2) + ')';
+      });
+    });
+
+    const landed = phase === 'done' || phase === 'gone';
+    document.querySelectorAll('.typed').forEach(function (el) { el.textContent = landed ? text : ''; });
+
+    const heard = Math.min(words.length, Math.floor((t / LISTEN) * words.length) + 1);
+    const caption = phase === 'listen' ? words.slice(0, heard).join(' ') : phase === 'think' ? text : '';
+    document.querySelectorAll('.caption').forEach(function (el) { el.textContent = caption; });
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
