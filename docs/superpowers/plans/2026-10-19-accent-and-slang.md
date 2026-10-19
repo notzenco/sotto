@@ -44,8 +44,8 @@ The lead runs tasks in waves. Tasks in the same wave touch different files and r
 |---|---|
 | 1 | Task 1 (catalog, settings, hint terms) |
 | 2 | Task 2 (spelling), Task 3 (clips), Task 4 (learning logic), Task 5 (engine layer and Parakeet family) |
-| 3 | Task 6 (hint words for Parakeet), Task 7 (Apple engine), Task 8 (Cohere engine), Task 9 (clip store and the commit pipeline) |
-| 4 | Task 10 (fix watcher), Task 11 (teacher scheduler), Task 12 (Settings panes) |
+| 3 | Task 6 (hint words for Parakeet), Task 8 (Cohere engine), Task 9 (clip store and the commit pipeline) |
+| 4 | Task 7 (Apple engine), Task 10 (fix watcher), Task 11 (teacher scheduler), Task 12 (Settings panes) |
 | 5 | Task 13 (Compare window) |
 
 ---
@@ -226,7 +226,7 @@ func testTallyCountsPicksAndCorrections() {
 - Consumes: `HintTerm` (Task 1).
 - Produces (public):
   - `struct Substitution: Codable, Equatable, Hashable, Sendable { var heard: String; var written: String }` — `heard` is lowercased and punctuation-free; `written` keeps the reference's case for the substituted words and lowercases added context words unless they are "I" or all caps.
-  - `enum PhraseAligner { static func substitutions(from hypothesis: String, to reference: String, maxWords: Int = 4, normalize: (String) -> String = { $0 }) -> [Substitution] }` — word-level alignment (Levenshtein over words compared after lowercasing, stripping punctuation and `normalize`). Each maximal run of differing words with both sides non-empty and each side ≤ `maxWords` words is a substitution. When the written side is one word shorter than 3 characters, extend both sides by the preceding word (or the following word at the start).
+  - `enum PhraseAligner { static func substitutions(from hypothesis: String, to reference: String, maxWords: Int = 4, normalize: (String) -> String = { $0 }) -> [Substitution] }` — word-level alignment (Levenshtein over words). Words are compared after lowercasing and stripping punctuation, and then `normalize` is applied to each word separately. Each maximal run of differing words with both sides non-empty and each side ≤ `maxWords` words is a substitution. When the written side is one word shorter than 3 characters, extend both sides by the preceding word (or the following word at the start).
   - `enum SoundAlike { static func similar(_ a: String, _ b: String) -> Bool }` — phonetic-key comparison (the algorithm is the implementer's choice) satisfying the tests.
   - `enum FixDetector { static func fix(inserted: String, fieldText: String) -> Substitution? }` — locates the inserted text in the field by word alignment; returns the single changed span when the rest is intact, the span is ≤4 words on each side, not a pure deletion, and `SoundAlike.similar(heard, written)`; otherwise nil.
   - `enum LearnSource: String, Codable, Sendable { case fix, compare, teacher }`
@@ -354,7 +354,7 @@ FluidAudio facts:
 
 **Files:**
 - Create: `App/Speech/AppleEngine.swift`
-- Modify: `App/LiveLine.swift` (locale and context), `App/Speech/EngineFactory.swift` (one line), `App/AppModel.swift` (pass the spelling locale and hint terms to `live`)
+- Modify: `App/LiveLine.swift` (locale and context), `App/Speech/EngineFactory.swift` (one line), `App/AppModel.swift` (add `refreshLiveContext()`, which calls `live.configure(locale: settings.spelling, hints: lexicon.hintTerms)`; call it at launch and from `setSpelling`, `addYourWord`, `removeYourWord`, `deleteLearnedWord` and `recordLearning`, which Task 9 added)
 
 **Interfaces:**
 - Consumes: `SpeechEngine` (Task 5), `SpellingVariety` and `HintTerm` (Task 1).
@@ -420,7 +420,7 @@ Privacy statement, exact copy:
 - Keep audio off: "Audio is never saved, and nothing leaves this Mac except model downloads."
 
 - [ ] **Step 1: Implement `ClipStore` and the lexicon store.**
-- [ ] **Step 2: Rework `commit`** as above, and add the settings actions. `setSpelling` also calls `live.configure` and `library.setSpelling`; `addYourWord`, `removeYourWord`, `deleteLearnedWord` and `recordLearning` save the lexicon and call `live.configure` with the new hint terms.
+- [ ] **Step 2: Rework `commit`** as above, and add the settings actions. `setSpelling` also calls `library.setSpelling` (Task 7, in the next wave, adds the live-caption refresh); `addYourWord`, `removeYourWord`, `deleteLearnedWord` and `recordLearning` save the lexicon.
 - [ ] **Step 3: Update the Privacy statement.**
 - [ ] **Step 4: `$BUILD` passes.**
 - [ ] **Step 5: Commit** — `feat(dictation): keep clips, apply spelling and pass hint words`
