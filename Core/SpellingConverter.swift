@@ -74,9 +74,11 @@ public enum SpellingConverter {
         return word
     }
 
-    /// Paths, URLs, snake_case, camelCase and dotted names such as file.color.
+    /// Paths, URLs, snake_case, camelCase, dotted names such as file.color,
+    /// flags, tags, variables, handles and anything with a digit.
     private static func looksLikeCode(_ chunk: String) -> Bool {
-        if chunk.contains(where: { $0 == "_" || $0 == "/" || $0 == "\\" }) { return true }
+        if chunk.contains(where: { $0 == "_" || $0 == "/" || $0 == "\\" || $0.isNumber }) { return true }
+        if ["--", "#", "$", "@"].contains(where: chunk.hasPrefix) { return true }
         var previous: Character?
         var beforePrevious: Character?
         for character in chunk {

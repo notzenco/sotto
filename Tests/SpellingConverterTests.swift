@@ -30,6 +30,21 @@ final class SpellingConverterTests: XCTestCase {
         XCTAssertEqual(SpellingConverter.convert("fucking shit, the color", to: .australian), "fucking shit, the colour")
         XCTAssertEqual(TranscriptFormatter.format("fuck this shit", mode: .prose), "Fuck this shit.")
         XCTAssertEqual(Rulebook().remember(heard: "john", written: "Jon").applying(to: "fuck off john"), "fuck off Jon")
+        for variety in SpellingVariety.allCases {
+            for text in ["what an asshole", "what an arsehole", "bloody hell", "bugger off", "piss off, you perv"] {
+                XCTAssertEqual(SpellingConverter.convert(text, to: variety), text, "\(variety): \(text)")
+            }
+        }
+    }
+
+    func testMeaningChangingPairsAreLeftAlone() {
+        XCTAssertEqual(SpellingConverter.convert("among the prized work, she learned", to: .australian), "among the prized work, she learned")
+        XCTAssertEqual(SpellingConverter.convert("the prev page", to: .american), "the prev page")
+    }
+
+    func testCodeLikePrefixesAndDigitsAreSkipped() {
+        let text = "set --color-primary and #color and $color and @color to color2"
+        XCTAssertEqual(SpellingConverter.convert(text, to: .australian), text)
     }
 
     func testPunctuationAroundWordsSurvives() {
