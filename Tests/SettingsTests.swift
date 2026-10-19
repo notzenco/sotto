@@ -2,6 +2,55 @@ import XCTest
 import SottoCore
 
 final class SettingsTests: XCTestCase {
+    func testColorConstructionClampsComponents() {
+        let color = RGBColor(red: 2, green: -1, blue: 0.5)
+        XCTAssertEqual(color.red, 1)
+        XCTAssertEqual(color.green, 0)
+        XCTAssertEqual(color.blue, 0.5)
+    }
+
+    func testColorMutationClampsComponents() {
+        var color = RGBColor.paper
+        color.red = -1
+        color.green = 2
+        color.blue = -0.5
+        XCTAssertEqual(color, RGBColor(red: 0, green: 1, blue: 0))
+    }
+
+    func testColorDecodingClampsComponents() throws {
+        let json = #"{"red":2,"green":-1,"blue":0.5}"#
+        let color = try JSONDecoder().decode(RGBColor.self, from: Data(json.utf8))
+        XCTAssertEqual(color, RGBColor(red: 1, green: 0, blue: 0.5))
+    }
+
+    func testNonFiniteColorComponentsBecomeZero() throws {
+        var color = RGBColor(red: .nan, green: .infinity, blue: -.infinity)
+        XCTAssertEqual(color, RGBColor(red: 0, green: 0, blue: 0))
+        color.red = .infinity
+        color.green = -.infinity
+        color.blue = .nan
+        XCTAssertEqual(color, RGBColor(red: 0, green: 0, blue: 0))
+
+        let decoder = JSONDecoder()
+        decoder.nonConformingFloatDecodingStrategy = .convertFromString(
+            positiveInfinity: "Infinity", negativeInfinity: "-Infinity", nan: "NaN"
+        )
+        let json = #"{"red":"NaN","green":"Infinity","blue":"-Infinity"}"#
+        XCTAssertEqual(try decoder.decode(RGBColor.self, from: Data(json.utf8)), color)
+    }
+
+    func testMalformedBarColorFallsBackAndKeepsOtherFields() throws {
+        let json = #"{"style":"notch","position":"top","size":1.2,"barColor":"invalid","background":"light","showWords":true,"display":"main"}"#
+        let settings = try JSONDecoder().decode(IndicatorSettings.self, from: Data(json.utf8))
+        XCTAssertEqual(settings.barColor, .paper)
+        XCTAssertEqual(settings.style, .notch)
+        XCTAssertEqual(settings.position, .top)
+        XCTAssertEqual(settings.size, 1.2)
+        XCTAssertEqual(settings.background, .light)
+        XCTAssertTrue(settings.showWords)
+        XCTAssertEqual(settings.display, .main)
+    }
+
     func testDecodesTodaysSettingsFile() throws {
         let json = #"{"historyHours":24,"keepFirstSyllable":true,"dictationCount":13,"inputDeviceID":136,"modeOverride":"literal"}"#
         let s = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))

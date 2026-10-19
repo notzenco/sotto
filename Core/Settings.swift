@@ -17,14 +17,38 @@ public enum IndicatorDisplay: String, Codable, CaseIterable, Sendable {
 }
 
 public struct RGBColor: Codable, Equatable, Hashable, Sendable {
-    public var red: Double
-    public var green: Double
-    public var blue: Double
+    public var red: Double {
+        didSet { red = Self.clamp(red) }
+    }
+    public var green: Double {
+        didSet { green = Self.clamp(green) }
+    }
+    public var blue: Double {
+        didSet { blue = Self.clamp(blue) }
+    }
 
     public init(red: Double, green: Double, blue: Double) {
-        self.red = red
-        self.green = green
-        self.blue = blue
+        self.red = Self.clamp(red)
+        self.green = Self.clamp(green)
+        self.blue = Self.clamp(blue)
+    }
+
+    /// Non-finite components become zero; finite components stay within 0...1.
+    private static func clamp(_ component: Double) -> Double {
+        component.isFinite ? min(max(component, 0), 1) : 0
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case red, green, blue
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            red: try container.decode(Double.self, forKey: .red),
+            green: try container.decode(Double.self, forKey: .green),
+            blue: try container.decode(Double.self, forKey: .blue)
+        )
     }
 
     public init?(hex: String) {
@@ -42,9 +66,9 @@ public struct RGBColor: Codable, Equatable, Hashable, Sendable {
 
     public var hex: String {
         String(format: "#%02X%02X%02X",
-               Int((min(max(red, 0), 1) * 255).rounded()),
-               Int((min(max(green, 0), 1) * 255).rounded()),
-               Int((min(max(blue, 0), 1) * 255).rounded()))
+               Int((red * 255).rounded()),
+               Int((green * 255).rounded()),
+               Int((blue * 255).rounded()))
     }
 
     public static let paper = RGBColor(red: 244 / 255, green: 239 / 255, blue: 230 / 255)
