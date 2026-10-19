@@ -13,6 +13,7 @@ final class ClipStore {
 
     @ObservationIgnored private let directory: URL
     @ObservationIgnored private let files: DispatchQueue
+    @ObservationIgnored private var pruneTimer: Timer?
     private nonisolated static let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     /// Reads every readable record. Unreadable files are skipped.
@@ -70,6 +71,23 @@ final class ClipStore {
             do { try Self.write(record, to: json) }
             catch { Self.log.error("clip record not updated: \(error.localizedDescription, privacy: .public)") }
         }
+    }
+
+    /// Checks every minute, so clips go after 7 days even on a Mac left running without dictation.
+    /// The check is a filter over the records; files are only touched once a clip has expired.
+    func startPruning() {
+        pruneTimer?.invalidate()
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.pruneIfExpired(now: Date()) }
+        }
+        timer.tolerance = 10
+        RunLoop.main.add(timer, forMode: .common)
+        pruneTimer = timer
+    }
+
+    private func pruneIfExpired(now: Date) {
+        guard !ClipRetention.expired(records, now: now).isEmpty else { return }
+        prune(now: now)
     }
 
     /// Deletes clips older than the retention period, plus stray files of that age that no record describes.

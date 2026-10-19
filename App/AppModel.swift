@@ -139,6 +139,7 @@ final class AppModel {
         library.refreshDownloadStates()
         Task { await library.prepareTypingModel() }
         clips.prune(now: Date())
+        clips.startPruning()
         warmSpelling(settings.spelling)
         teacher?.start()
     }
@@ -675,7 +676,10 @@ final class AppModel {
             history.removeAll { $0.date < cutoff }
             LocalStore.save(history: history)
         }
-        if settings.keepAudio, !samples.isEmpty {
+        // Speech aimed at a password field is never kept.
+        let secure = snapshot?.isSecureField == true || snapshot?.secureInput == true
+            || result == .kept(.passwordField)
+        if settings.keepAudio, !samples.isEmpty, !secure {
             clips.save(samples: samples, record: ClipRecord(
                 date: Date(), bundleID: snapshot?.bundleID, domain: domain,
                 durationSeconds: Double(samples.count) / 16_000, typingModel: clipModel,
