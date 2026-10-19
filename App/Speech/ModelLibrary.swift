@@ -34,8 +34,8 @@ final class ModelLibrary {
     private var engines: [SpeechModelID: any SpeechEngine]
     /// The loaded engine dictation uses. Nil until the typing model is ready.
     private var typingEngine: (any SpeechEngine)?
-    /// The model the latest `select` is switching to.
-    private var pendingSelection: SpeechModelID?
+    /// The model the latest `select` is switching to, shown as chosen in Settings while it downloads or prepares.
+    private(set) var pendingSelection: SpeechModelID?
     /// The running load for each model and the engine it is loading. A spelling change can replace the engine meanwhile.
     private var loading: [SpeechModelID: (engine: any SpeechEngine, task: Task<Bool, Never>)] = [:]
     /// Models whose download or load is running, so late progress updates are ignored.

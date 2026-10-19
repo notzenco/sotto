@@ -432,11 +432,16 @@ final class AppModel {
         refreshLiveContext()
     }
 
-    /// Typing stays on the current model until the new one is ready.
+    /// Typing stays on the current model until the new one is ready. The choice is saved only once the switch
+    /// succeeds, so a relaunch during a download or after a failed load starts on the model that last worked.
+    /// Settings shows the pending choice from `library.pendingSelection` meanwhile.
     func setTypingModel(_ id: SpeechModelID) {
-        settings.typingModel = id
-        LocalStore.save(settings: settings)
-        Task { await library.select(id) }
+        Task {
+            await library.select(id)
+            guard settings.typingModel != library.typingModel else { return }
+            settings.typingModel = library.typingModel
+            LocalStore.save(settings: settings)
+        }
     }
 
     /// Nil turns the teacher off.

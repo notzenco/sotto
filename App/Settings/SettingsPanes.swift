@@ -255,8 +255,9 @@ struct SpeechSettingsPane: View {
 
     private func typingModelRow(_ info: SpeechModelInfo) -> some View {
         let state = model.library.states[info.id]
-        let chosen = model.settings.typingModel == info.id
         let inUse = model.library.typingModel == info.id
+        // A model being switched to shows as chosen while it downloads or prepares; typing stays on the old one.
+        let chosen = (model.library.pendingSelection ?? model.library.typingModel) == info.id
         return HStack(alignment: .center, spacing: 10) {
             Button {
                 guard !chosen else { return }
