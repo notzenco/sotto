@@ -193,15 +193,22 @@ final class AudioCapture: @unchecked Sendable {
     private func convert(_ buffer: AVAudioPCMBuffer) {
         guard let targetFormat else { return }
         let floats = resample(buffer, to: targetFormat)
-        let level = levelMeter.ingest(floats)
         lock.lock()
         ring.append(floats)
         if recording {
             utterance.append(contentsOf: floats)
         }
         let callback = onSamples
-        let levelCallback = levelPublishing ? onLevel : nil
+        let publishesLevel = levelPublishing
+        let levelCallback = publishesLevel ? onLevel : nil
         lock.unlock()
+        let level: Float
+        if publishesLevel {
+            level = levelMeter.ingest(floats)
+        } else {
+            levelMeter.reset()
+            level = 0
+        }
         callback?(buffer, floats)
         levelCallback?(level)
     }
