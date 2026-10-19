@@ -10,6 +10,8 @@ This is the first of three projects agreed for Sotto's next round. The other two
 
 The new look goes first because every later feature needs a place in Settings.
 
+Update, 19 October 2026: the later work was re-planned as three projects. Each has its own design: accent and slang (`2026-10-19-accent-and-slang-design.md`), smart features on-device (`2026-10-19-smart-features-design.md`), and quality of life (`2026-10-19-quality-of-life-design.md`). Snippets and per-app behaviour moved into smart features.
+
 ## Why
 
 Sotto works, but it doesn't feel good to use. While you talk it shows a small text box under the menu bar with the words it thinks it heard. Wispr Flow and ChatGPT show an animated audio indicator instead, and that is what the owner wants: something that visibly reacts to their voice, looks polished, and can be made their own. Its settings are also a single scrolling page. They need room to grow into the many settings projects 2 and 3 will add.

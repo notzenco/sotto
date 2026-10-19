@@ -15,6 +15,8 @@ final class TextInserter {
     /// Host of the focused window URL, with a leading "www." removed. Nil when there is no URL. Never a path or query.
     private(set) var lastDomain: String?
     private var clipboardRestoreTask: Task<Void, Never>?
+    /// The end of the last insertion, for fields that do not expose their text.
+    private var recent: (element: AXUIElement, text: String, date: Date)?
 
     func captureFocus() -> FocusSnapshot {
         let secureInput = IsSecureEventInputEnabled()
@@ -32,8 +34,31 @@ final class TextInserter {
                              selectedTextSettable: canSet, isSecureField: secure, secureInput: secureInput)
     }
 
+    /// The last few characters before the cursor in the focused field: empty at the start of a field,
+    /// nil when the app does not say. A field that hides its text falls back to Sotto's own last
+    /// insertion there, if it was recent.
+    func textBeforeCursor(bundleID: String?) -> String? {
+        guard let element = focusedElement() else { return nil }
+        AXUIElementSetMessagingTimeout(element, 0.25)
+        // A terminal's selection is in the scrollback, not at the prompt.
+        if !AppIdentity.isTerminal(bundleID ?? ""), let text = axTextBeforeCursor(element) { return text }
+        if (attribute(element, kAXNumberOfCharactersAttribute) as? NSNumber)?.intValue == 0 { return "" }
+        guard let recent, CFEqual(recent.element, element),
+              Date().timeIntervalSince(recent.date) < 180 else { return nil }
+        return recent.text
+    }
+
     func insert(_ text: String, captured: FocusSnapshot,
                 isAllowed: () -> Bool = { true }) async -> InsertResult {
+        let result = await deliver(text, captured: captured, isAllowed: isAllowed)
+        if result == .inserted, let element = focusedElement() {
+            recent = (element, String(text.suffix(32)), Date())
+        }
+        return result
+    }
+
+    private func deliver(_ text: String, captured: FocusSnapshot,
+                         isAllowed: () -> Bool) async -> InsertResult {
         guard isAllowed() else { return .cancelled }
         // Recheck after each suspension: another caller may have borrowed the clipboard meanwhile.
         while let task = clipboardRestoreTask {
@@ -116,6 +141,28 @@ final class TextInserter {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return nil }
         return value
+    }
+
+    private func axTextBeforeCursor(_ element: AXUIElement) -> String? {
+        guard let value = attribute(element, kAXSelectedTextRangeAttribute),
+              CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var selection = CFRange()
+        guard AXValueGetValue(unsafeDowncast(value, to: AXValue.self), .cfRange, &selection),
+              selection.location >= 0, selection.location != kCFNotFound else { return nil }
+        if selection.location == 0 { return "" }
+        let length = min(selection.location, 32)
+        var range = CFRange(location: selection.location - length, length: length)
+        if let rangeValue = AXValueCreate(.cfRange, &range) {
+            var string: CFTypeRef?
+            if AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString,
+                                                          rangeValue, &string) == .success,
+               let string = string as? String, !string.isEmpty {
+                return string
+            }
+        }
+        guard let whole = attribute(element, kAXValueAttribute) as? String,
+              selection.location <= (whole as NSString).length else { return nil }
+        return (whole as NSString).substring(with: NSRange(location: range.location, length: range.length))
     }
 
     private func domain(_ element: AXUIElement) -> String? {
