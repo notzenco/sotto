@@ -64,6 +64,7 @@ final class AppModel {
     private var takes = TakeLedger()
     private var postRollTake: TakeLedger.ID?
     private var parkedSamples: [TakeLedger.ID: [Float]] = [:]
+    @ObservationIgnored private var teacher: TeacherScheduler?
     private let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     init() {
@@ -74,6 +75,12 @@ final class AppModel {
         history = LocalStore.loadHistory()
         library = ModelLibrary(typingModel: settings.typingModel, spelling: settings.spelling)
         clips = ClipStore(directory: LocalStore.clipsDirectory)
+        teacher = TeacherScheduler(
+            library: library, clips: clips,
+            settings: { [unowned self] in self.settings },
+            onSubstitution: { [weak self] substitution, clipID in
+                self?.recordLearning(substitution, source: .teacher, clipID: clipID)
+            })
         indicator.apply(settings.indicator)
         indicator.onHide = { [weak self] in
             self?.setLevelWatching(false, for: .indicator)
@@ -126,6 +133,7 @@ final class AppModel {
         Task { await library.prepareTypingModel() }
         clips.prune(now: Date())
         warmSpelling(settings.spelling)
+        teacher?.start()
     }
 
     /// Builds the spelling tables now rather than during the next dictation.
@@ -497,6 +505,7 @@ final class AppModel {
     }
 
     private func beginTake(_ take: TakeLedger.ID) {
+        teacher?.noteDictation()
         if let previous = postRollTake {
             parkedSamples[previous] = capture.endUtterance()
             postRollTake = nil

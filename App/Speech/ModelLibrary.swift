@@ -6,6 +6,7 @@ enum ModelLibraryError: LocalizedError {
     case inUse
     case unavailable
     case busy
+    case notDownloaded
     case notReady(String)
 
     var errorDescription: String? {
@@ -13,6 +14,7 @@ enum ModelLibraryError: LocalizedError {
         case .inUse: "This model is typing. Choose another model first."
         case .unavailable: "Sotto can't run this model yet."
         case .busy: "This model is downloading or preparing."
+        case .notDownloaded: "Download this model first."
         case .notReady(let reason): reason
         }
     }
@@ -154,6 +156,11 @@ final class ModelLibrary {
         if let error = await task.value { throw error }
     }
 
+    func isDownloaded(_ id: SpeechModelID) async -> Bool {
+        guard let engine = engines[id] else { return false }
+        return await engine.isDownloaded()
+    }
+
     /// Nil when the typing model isn't ready or hears nothing.
     func transcribeTyping(_ samples: [Float], hints: [HintTerm]) async -> EngineResult? {
         guard let engine = typingEngine else { return nil }
@@ -162,11 +169,13 @@ final class ModelLibrary {
     }
 
     /// Loads the model if it isn't the typing model, runs `body`, then unloads it.
+    /// Never downloads: throws `notDownloaded` when the model isn't on disk.
     func withLoaded<T: Sendable>(
         _ id: SpeechModelID,
         _ body: @Sendable (any SpeechEngine) async throws -> T
     ) async throws -> T {
         guard let engine = engines[id] else { throw ModelLibraryError.unavailable }
+        guard await engine.isDownloaded() else { throw ModelLibraryError.notDownloaded }
         guard await acquire(id) else {
             await release(id)
             if case .failed(let reason)? = states[id] { throw ModelLibraryError.notReady(reason) }

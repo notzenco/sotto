@@ -51,6 +51,17 @@ final class ClipStore {
         }
     }
 
+    /// Like `samples(for:)`, but waits off the main actor.
+    func loadSamples(for id: UUID) async -> [Float]? {
+        let url = audioURL(id)
+        let files = files
+        return await withCheckedContinuation { continuation in
+            files.async {
+                continuation.resume(returning: (try? Data(contentsOf: url)).flatMap(Self.decode))
+            }
+        }
+    }
+
     func update(_ record: ClipRecord) {
         guard let index = records.firstIndex(where: { $0.id == record.id }) else { return }
         records[index] = record
