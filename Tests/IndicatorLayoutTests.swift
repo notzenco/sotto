@@ -41,6 +41,48 @@ final class IndicatorLayoutTests: XCTestCase {
                        CGRect(x: 359, y: 96, width: 84, height: 24))
     }
 
+    func testCaretCaptionGoesAwayFromTheCaretAbove() throws {
+        let result = place(caption: CGSize(width: 200, height: 18), position: .caret,
+                           caret: CGRect(x: 400, y: 70, width: 2, height: 18))
+        XCTAssertEqual(result.body, CGRect(x: 359, y: 96, width: 84, height: 24))
+        let caption = try XCTUnwrap(result.caption)
+        XCTAssertEqual(caption, CGRect(x: 301, y: 126, width: 200, height: 18))
+        let band = CGRect(x: 0, y: 68, width: 1512, height: 22)
+        XCTAssertFalse(result.body.union(caption).intersects(band))
+    }
+
+    func testCaretCaptionGoesAwayFromTheCaretBelow() {
+        let result = place(caption: CGSize(width: 200, height: 18), position: .caret,
+                           caret: CGRect(x: 400, y: 500, width: 2, height: 18))
+        XCTAssertEqual(result.body, CGRect(x: 359, y: 468, width: 84, height: 24))
+        XCTAssertEqual(result.caption, CGRect(x: 301, y: 444, width: 200, height: 18))
+    }
+
+    func testNarrowScreenClampsWidthsToAvailableSpace() throws {
+        let screen = ScreenGeometry(frame: CGRect(x: 0, y: 0, width: 320, height: 600),
+                                    visibleFrame: CGRect(x: 0, y: 0, width: 320, height: 580),
+                                    notch: nil)
+        let result = IndicatorLayout.place(body: CGSize(width: 900, height: 24),
+                                           caption: CGSize(width: 400, height: 18),
+                                           style: .pill, position: .bottom, screen: screen, caret: nil)
+        let caption = try XCTUnwrap(result.caption)
+        XCTAssertEqual(result.body.width, 304)
+        XCTAssertEqual(caption.width, 304)
+        for rect in [result.body, caption] {
+            XCTAssertGreaterThanOrEqual(rect.minX, screen.visibleFrame.minX)
+            XCTAssertLessThanOrEqual(rect.maxX, screen.visibleFrame.maxX)
+            XCTAssertGreaterThanOrEqual(rect.minY, screen.visibleFrame.minY)
+            XCTAssertLessThanOrEqual(rect.maxY, screen.visibleFrame.maxY)
+        }
+    }
+
+    func testTallCaptionStaysOnScreen() throws {
+        let caption = try XCTUnwrap(place(caption: CGSize(width: 200, height: 900)).caption)
+        XCTAssertEqual(caption, CGRect(x: 656, y: 82, width: 200, height: 900))
+        XCTAssertGreaterThanOrEqual(caption.minY, s.frame.minY)
+        XCTAssertLessThanOrEqual(caption.maxY, s.frame.maxY)
+    }
+
     func testCaretPositionWithoutCaretFallsBackToBottom() {
         XCTAssertEqual(place(position: .caret).body, CGRect(x: 714, y: 76, width: 84, height: 24))
     }

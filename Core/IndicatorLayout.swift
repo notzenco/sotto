@@ -56,8 +56,11 @@ public enum IndicatorLayout {
         body: CGSize, caption: CGSize?, style: IndicatorStyle, position: IndicatorPosition,
         screen: ScreenGeometry, caret: CGRect?
     ) -> IndicatorPlacement {
-        let bodySize = CGSize(width: min(body.width, maxBodyWidth), height: body.height)
-        let captionSize = caption.map { CGSize(width: min($0.width, maxCaptionWidth), height: $0.height) }
+        let availableWidth = max(0, screen.visibleFrame.width - edgeMargin)
+        let bodySize = CGSize(width: min(body.width, maxBodyWidth, availableWidth), height: body.height)
+        let captionSize = caption.map {
+            CGSize(width: min($0.width, maxCaptionWidth, availableWidth), height: $0.height)
+        }
         let caret = usableCaret(caret, screens: [screen])
         let position: IndicatorPosition = position == .caret && caret == nil ? .bottom : position
 
@@ -89,7 +92,8 @@ public enum IndicatorLayout {
                     return CGRect(x: body.maxX + captionGap, y: body.midY - size.height / 2,
                                   width: size.width, height: size.height)
                 }
-                let above = style == .pill && position == .bottom
+                let aboveCaret = position == .caret && caret.map { body.minY >= $0.maxY } == true
+                let above = style == .pill && (position == .bottom || aboveCaret)
                 return CGRect(x: body.midX - size.width / 2,
                               y: above ? body.maxY + captionGap : body.minY - captionGap - size.height,
                               width: size.width, height: size.height)
@@ -113,14 +117,17 @@ public enum IndicatorLayout {
             }
         }
 
-        func horizontallyContained(_ rect: CGRect) -> CGRect {
+        func contained(_ rect: CGRect) -> CGRect {
             var rect = rect
             rect.origin.x = max(screen.visibleFrame.minX,
                                 min(rect.minX, screen.visibleFrame.maxX - rect.width))
+            // Containment takes precedence over caret clearance after placement.
+            rect.origin.y = max(screen.frame.minY,
+                                min(rect.minY, screen.frame.maxY - rect.height))
             return rect
         }
-        result.body = horizontallyContained(result.body)
-        result.caption = result.caption.map(horizontallyContained)
+        result.body = contained(result.body)
+        result.caption = result.caption.map(contained)
         return result
     }
 }
