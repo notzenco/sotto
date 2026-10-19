@@ -23,8 +23,19 @@ public struct Rulebook: Codable, Equatable, Sendable {
     }
 
     public func applying(to text: String) -> String {
+        applying(to: text, alsoMatching: { $0 })
+    }
+
+    /// Also matches each heard form as `variant` rewrites it, such as after spelling conversion,
+    /// so the owner's Names still win over respelled words.
+    public func applying(to text: String, alsoMatching variant: (String) -> String) -> String {
         let rules = replacements
-            .map { Replacement(id: $0.id, heard: normalized($0.heard), written: $0.written) }
+            .flatMap { rule -> [Replacement] in
+                let heard = normalized(rule.heard)
+                let converted = normalized(variant(heard))
+                return (converted == heard ? [heard] : [heard, converted])
+                    .map { Replacement(id: rule.id, heard: $0, written: rule.written) }
+            }
             .filter { !$0.heard.isEmpty }
             .sorted { $0.heard.count > $1.heard.count }
         let source = text as NSString

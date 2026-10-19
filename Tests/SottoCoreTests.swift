@@ -93,6 +93,15 @@ final class RulebookTests: XCTestCase {
         book = book.remember(heard: "sotto", written: "Sotto")
         XCTAssertTrue(book.replacements.isEmpty)
     }
+
+    func testNamesStillMatchAfterSpellingConversion() {
+        let australian: (String) -> String = { SpellingConverter.convert($0, to: .australian) }
+        XCTAssertEqual(Rulebook().remember(heard: "honor", written: "Honor").applying(to: "honour", alsoMatching: australian),
+                       "Honor")
+        XCTAssertEqual(Rulebook().remember(heard: "color hub", written: "ColorHub")
+                        .applying(to: "open colour hub now", alsoMatching: australian),
+                       "open ColorHub now")
+    }
 }
 
 final class InsertPlannerTests: XCTestCase {

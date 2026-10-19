@@ -28,6 +28,21 @@ public struct LearnedWord: Codable, Equatable, Sendable, Identifiable {
         self.teacherClipsByHeard = teacherClipsByHeard
         self.learned = learned
     }
+
+    /// Older or partial files decode with defaults for missing keys.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID(),
+            written: try container.decode(String.self, forKey: .written),
+            heardForms: try container.decodeIfPresent([String].self, forKey: .heardForms) ?? [],
+            sources: try container.decodeIfPresent([LearnSource].self, forKey: .sources) ?? [],
+            count: try container.decodeIfPresent(Int.self, forKey: .count) ?? 0,
+            teacherClips: try container.decodeIfPresent([UUID].self, forKey: .teacherClips) ?? [],
+            teacherClipsByHeard: try container.decodeIfPresent([String: [UUID]].self, forKey: .teacherClipsByHeard) ?? [:],
+            learned: try container.decodeIfPresent(Bool.self, forKey: .learned) ?? false
+        )
+    }
 }
 
 /// The owner's words: learned from fixes, Compare picks and the teacher, plus words typed in by hand.
@@ -45,6 +60,17 @@ public struct Lexicon: Codable, Equatable, Sendable {
         self.entries = entries
         self.yourWords = yourWords
         self.blocked = blocked
+    }
+
+    /// Older or partial files decode with defaults for missing keys. An entry that can't be read,
+    /// such as one from a newer build, is dropped on its own.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            entries: (try container.decodeIfPresent([ReadableEntry].self, forKey: .entries) ?? []).compactMap(\.word),
+            yourWords: try container.decodeIfPresent([String].self, forKey: .yourWords) ?? [],
+            blocked: try container.decodeIfPresent([String].self, forKey: .blocked) ?? []
+        )
     }
 
     public var learnedWords: [LearnedWord] {
@@ -131,6 +157,14 @@ public struct Lexicon: Codable, Equatable, Sendable {
             terms.append(HintTerm(text: word))
         }
         return terms
+    }
+
+    private struct ReadableEntry: Decodable {
+        let word: LearnedWord?
+
+        init(from decoder: Decoder) throws {
+            word = try? LearnedWord(from: decoder)
+        }
     }
 
     /// Lowercased and single-spaced.
