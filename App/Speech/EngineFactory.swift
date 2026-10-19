@@ -8,7 +8,7 @@ func makeEngine(for id: SpeechModelID, spelling: SpellingVariety) -> (any Speech
     case .parakeetUltra: ParakeetFamilyEngine(id: id, version: .ultra)
     case .phonon2: ParakeetFamilyEngine(id: id, version: .phonon2)
     case .parakeetV3: ParakeetFamilyEngine(id: id, version: .v3)
-    case .cohere: nil
+    case .cohere: CohereEngine(id: id)
     case .appleEnglish: nil
     }
 }
