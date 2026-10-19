@@ -217,6 +217,8 @@ struct SpeechSettingsPane: View {
         }
         .formStyle(.grouped)
         .onAppear { model.library.refreshDownloadStates() }
+        // A stale error such as "busy" goes once any model's state moves on.
+        .onChange(of: model.library.states) { deleteError = nil }
         .confirmationDialog(
             modelToDelete.map { "Delete \(name(of: SpeechCatalog.info($0)))?" } ?? "",
             isPresented: Binding(get: { modelToDelete != nil }, set: { if !$0 { modelToDelete = nil } })
@@ -253,7 +255,9 @@ struct SpeechSettingsPane: View {
         let inUse = model.library.typingModel == info.id
         return HStack(alignment: .center, spacing: 10) {
             Button {
-                if !chosen { model.setTypingModel(info.id) }
+                guard !chosen else { return }
+                deleteError = nil
+                model.setTypingModel(info.id)
             } label: {
                 Image(systemName: chosen ? "largecircle.fill.circle" : "circle")
                     .foregroundStyle(chosen ? Color.accentColor : Color.secondary)
@@ -304,9 +308,15 @@ struct SpeechSettingsPane: View {
             case .ready?:
                 if inUse {
                     Text("In use").foregroundStyle(.secondary)
-                } else if !chosen {
-                    Button("Delete…") { modelToDelete = info.id }
-                        .accessibilityLabel("Delete \(name(of: info))")
+                } else if info.kind == .apple {
+                    // Built into macOS, so there is nothing to delete.
+                    Text("Built in").foregroundStyle(.secondary)
+                } else {
+                    Text("Downloaded").foregroundStyle(.secondary)
+                    if !chosen {
+                        Button("Delete…") { modelToDelete = info.id }
+                            .accessibilityLabel("Delete \(name(of: info))")
+                    }
                 }
             case .notDownloaded?:
                 Button("Download") { download(info.id) }
@@ -396,6 +406,7 @@ struct SpeechSettingsPane: View {
     }
 
     private func download(_ id: SpeechModelID) {
+        deleteError = nil
         Task { await model.library.download(id) }
     }
 
@@ -424,7 +435,11 @@ struct SpeechSettingsPane: View {
     private var spellingSelection: Binding<SpellingVariety> {
         Binding(
             get: { model.settings.spelling },
-            set: { model.setSpelling($0) }
+            set: {
+                model.setSpelling($0)
+                // Changing spelling rebuilds Apple's engine and clears its state, so look it up again.
+                model.library.refreshDownloadStates()
+            }
         )
     }
 
@@ -545,7 +560,7 @@ struct DictionarySettingsPane: View {
             case .teacher: "the teacher"
             }
         }
-        let from = sources.isEmpty ? "" : "From \(sources.joined(separator: ", ")), "
+        let from = sources.isEmpty ? "" : "From \(sources.formatted(.list(type: .and))) · "
         let times = word.count == 1 ? "once" : "\(word.count) times"
         return from + times
     }
