@@ -456,7 +456,7 @@ final class AppModel {
         let transcribed = Date()
 
         if modelPhase != .ready {
-            present(.problem(.modelDownloading))
+            present(.problem(.modelDownloading), generation: generation)
             if !apple.isEmpty { lastTranscript = apple }
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
@@ -464,14 +464,14 @@ final class AppModel {
 
         let raw = transcript ?? (apple.isEmpty ? nil : apple)
         guard let raw, !raw.isEmpty else {
-            present(.problem(.notHeard))
+            present(.problem(.notHeard), generation: generation)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
         let mode = settings.modeOverride ?? AppIdentity.defaultMode(bundleID: snapshot?.bundleID, domain: domain)
         let formatted = rulebook.applying(to: TranscriptFormatter.format(raw, mode: mode))
         guard !formatted.isEmpty else {
-            present(.problem(.notHeard))
+            present(.problem(.notHeard), generation: generation)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
@@ -485,9 +485,9 @@ final class AppModel {
         let injected = Date()
         switch result {
         case .inserted:
-            present(.done)
+            present(.done, generation: generation)
         case .kept(let problem):
-            present(.problem(problem))
+            present(.problem(problem), generation: generation)
         }
         lastTranscript = formatted
         settings.dictationCount += 1
@@ -501,8 +501,8 @@ final class AppModel {
         logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: injected)
     }
 
-    private func present(_ phase: IndicatorPhase) {
-        guard !listening else { return }
+    private func present(_ phase: IndicatorPhase, generation: Int) {
+        guard !listening, generation == liveGeneration else { return }
         indicator.show(phase)
     }
 
