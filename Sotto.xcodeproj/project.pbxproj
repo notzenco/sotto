@@ -30,6 +30,7 @@
 		ABD11B9B0E8A8B41099C413E /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E92379DF801F9A016518C4A /* Permissions.swift */; };
 		B5EA9879D19BB7665AAB89E8 /* libSottoCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3F6DE0D49F84C5997837AD5B /* libSottoCore.a */; };
 		B949D42AB2779695D3E22A54 /* LevelMeterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */; };
+		BE45AEA6BE38E885A99C55AA /* IndicatorBarsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32E03B5BCB98F26F4092A741 /* IndicatorBarsTests.swift */; };
 		C084A5CBA85C6FC0A05585BB /* IndicatorLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */; };
 		C6DF9CAE74DB36CF14F177E7 /* InsertPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92F56757B510A190839C4BB /* InsertPlanner.swift */; };
 		D5A79C85D00BF3982849B454 /* TranscriptFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5725C9D695FB3DFAFE8BF054 /* TranscriptFormatter.swift */; };
@@ -37,8 +38,10 @@
 		DB556DB8D5385272C0902E99 /* SottoCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F9A36D846BD703AB4954B1B /* SottoCoreTests.swift */; };
 		E0BB6D9B30FF25AEB59AFF85 /* IndicatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */; };
 		E180C3A67B7166CF86AB7201 /* IndicatorLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */; };
+		E2203C8C118A67B37BF1B7EA /* IndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCA0A63EF32581C15E8D13F /* IndicatorView.swift */; };
 		E45626642DBF24EA8F24EE78 /* SettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */; };
 		E5F8DB2356A832E04C3C6EBD /* Stores.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC51D3A5933645C7B14C2D9 /* Stores.swift */; };
+		EE8A4B8E715D4A2760EAB6D7 /* IndicatorBars.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03BC7AF4D922FBD8E6583E67 /* IndicatorBars.swift */; };
 		F62814C1280CD5A67506366D /* HoldTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28035B2F64D20BFBB7C8BE7 /* HoldTracker.swift */; };
 		F63FAD9095740CCE88CC4DC8 /* LiveLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CB0D3AFB6135CF0F2A5770D /* LiveLine.swift */; };
 		FCAF2E96F2B3202F73332E14 /* Rulebook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BFD08640EDFB89AE59D4EF /* Rulebook.swift */; };
@@ -62,6 +65,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		03BC7AF4D922FBD8E6583E67 /* IndicatorBars.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorBars.swift; sourceTree = "<group>"; };
+		0FCA0A63EF32581C15E8D13F /* IndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorView.swift; sourceTree = "<group>"; };
 		15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SottoApp.swift; sourceTree = "<group>"; };
 		15E2029300C2FDA49EBB9130 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1A0238B465AA0A4FA468EB40 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
@@ -70,6 +75,7 @@
 		2972BAE3073E24FE76A2C05F /* Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcuts.swift; sourceTree = "<group>"; };
 		2A94A254F9B50269EE1EAB8A /* Sotto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sotto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CB0D3AFB6135CF0F2A5770D /* LiveLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveLine.swift; sourceTree = "<group>"; };
+		32E03B5BCB98F26F4092A741 /* IndicatorBarsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorBarsTests.swift; sourceTree = "<group>"; };
 		3F6DE0D49F84C5997837AD5B /* libSottoCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSottoCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		5725C9D695FB3DFAFE8BF054 /* TranscriptFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptFormatter.swift; sourceTree = "<group>"; };
 		59BFD08640EDFB89AE59D4EF /* Rulebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rulebook.swift; sourceTree = "<group>"; };
@@ -124,6 +130,7 @@
 		03EE21664FE912C42CCE7A3C /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				32E03B5BCB98F26F4092A741 /* IndicatorBarsTests.swift */,
 				ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */,
 				D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */,
 				E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */,
@@ -150,6 +157,7 @@
 				F7D348ACDDD1E00CFB8160D3 /* DictationMode.swift */,
 				B28035B2F64D20BFBB7C8BE7 /* HoldTracker.swift */,
 				8E5889C01D01EA2919CEEE8F /* Indicator.swift */,
+				03BC7AF4D922FBD8E6583E67 /* IndicatorBars.swift */,
 				C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */,
 				D92F56757B510A190839C4BB /* InsertPlanner.swift */,
 				BF82C7764642BCB684DCED3A /* LevelMeter.swift */,
@@ -160,6 +168,14 @@
 				5725C9D695FB3DFAFE8BF054 /* TranscriptFormatter.swift */,
 			);
 			path = Core;
+			sourceTree = "<group>";
+		};
+		6CF0D05FEBDE687CEFEC2A19 /* Indicator */ = {
+			isa = PBXGroup;
+			children = (
+				0FCA0A63EF32581C15E8D13F /* IndicatorView.swift */,
+			);
+			path = Indicator;
 			sourceTree = "<group>";
 		};
 		AE528EBD8D688E7864DA0F83 /* Products */ = {
@@ -190,6 +206,7 @@
 				15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */,
 				5BC51D3A5933645C7B14C2D9 /* Stores.swift */,
 				5CA740A9B9A7B3FE44E22634 /* TextInserter.swift */,
+				6CF0D05FEBDE687CEFEC2A19 /* Indicator */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -330,6 +347,7 @@
 				32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */,
 				6BA0AA7A68B35E9A7996B2C4 /* AudioCapture.swift in Sources */,
 				8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */,
+				E2203C8C118A67B37BF1B7EA /* IndicatorView.swift in Sources */,
 				F63FAD9095740CCE88CC4DC8 /* LiveLine.swift in Sources */,
 				71374BD8199107BE4905ABA2 /* MenuBarController.swift in Sources */,
 				59566FCD639449DA75569503 /* Palette.swift in Sources */,
@@ -348,6 +366,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BE45AEA6BE38E885A99C55AA /* IndicatorBarsTests.swift in Sources */,
 				C084A5CBA85C6FC0A05585BB /* IndicatorLayoutTests.swift in Sources */,
 				E0BB6D9B30FF25AEB59AFF85 /* IndicatorTests.swift in Sources */,
 				B949D42AB2779695D3E22A54 /* LevelMeterTests.swift in Sources */,
@@ -364,6 +383,7 @@
 				96EC04C973AD8D60B5F04E5D /* DictationMode.swift in Sources */,
 				F62814C1280CD5A67506366D /* HoldTracker.swift in Sources */,
 				48F5731364F01F2AD65BE690 /* Indicator.swift in Sources */,
+				EE8A4B8E715D4A2760EAB6D7 /* IndicatorBars.swift in Sources */,
 				E180C3A67B7166CF86AB7201 /* IndicatorLayout.swift in Sources */,
 				C6DF9CAE74DB36CF14F177E7 /* InsertPlanner.swift in Sources */,
 				00E468A4C2FBAC018637E0F6 /* LevelMeter.swift in Sources */,
