@@ -67,25 +67,38 @@ actor ParakeetFamilyEngine: SpeechEngine {
     }
 
     /// FluidAudio's download fraction covers 0...0.5 of a repo load, and every model file it loads
-    /// reports a cached download again before compiling. Once compiling starts, keep reporting nil.
+    /// reports a cached download again before compiling. Compiling is reported once, as nil, and nothing after it.
+    /// Byte updates arrive per network write, so the fraction is only passed on when it moves by 0.01.
     private static func progressHandler(_ progress: @escaping @Sendable (Double?) -> Void) -> ProgressHandler {
-        let compiling = CompileLatch()
+        let gate = ProgressGate()
         return { update in
-            let started = compiling.started.withLock { started in
-                if case .compiling = update.phase { started = true }
-                return started
+            let report: Double?? = gate.state.withLock { state in
+                let phase: ProgressGate.Phase
+                let fraction: Double?
+                switch update.phase {
+                case .compiling:
+                    phase = .compiling
+                    fraction = nil
+                case .listing:
+                    phase = .listing
+                    fraction = 0
+                case .downloading(_, let totalFiles) where totalFiles > 0:
+                    phase = .downloading
+                    fraction = min(update.fractionCompleted * 2, 1)
+                case .downloading:
+                    return .none
+                }
+                if state.phase == .compiling { return .none }
+                if phase == state.phase, let fraction, let last = state.fraction,
+                   fraction - last < 0.01, fraction < 1 {
+                    return .none
+                }
+                state.phase = phase
+                state.fraction = fraction
+                return .some(fraction)
             }
-            if started {
-                progress(nil)
-                return
-            }
-            switch update.phase {
-            case .listing:
-                progress(0)
-            case .downloading(_, let totalFiles) where totalFiles > 0:
-                progress(min(update.fractionCompleted * 2, 1))
-            case .downloading, .compiling:
-                break
+            if case .some(let fraction) = report {
+                progress(fraction)
             }
         }
     }
@@ -94,8 +107,13 @@ actor ParakeetFamilyEngine: SpeechEngine {
         case notReady
     }
 
-    private final class CompileLatch: Sendable {
-        let started = Mutex(false)
+    private final class ProgressGate: Sendable {
+        enum Phase { case none, listing, downloading, compiling }
+        struct State {
+            var phase = Phase.none
+            var fraction: Double?
+        }
+        let state = Mutex(State())
     }
 }
 

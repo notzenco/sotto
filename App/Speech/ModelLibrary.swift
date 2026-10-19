@@ -34,6 +34,10 @@ final class ModelLibrary {
     private var loading: [SpeechModelID: Task<Bool, Never>] = [:]
     /// Models whose download or load is running, so late progress updates are ignored.
     private var inFlight: Set<SpeechModelID> = []
+    /// Jobs holding each model loaded. Every load takes a lease; the last release unloads a model that isn't typing.
+    private var leases: [SpeechModelID: Int] = [:]
+    /// A running unload or delete. Loads wait for it, so they never race it.
+    private var teardowns: [SpeechModelID: Task<(any Error)?, Never>] = [:]
 
     /// Falls back to Parakeet v2 when the saved typing model has no engine in this build.
     init(typingModel: SpeechModelID, spelling: SpellingVariety) {
@@ -85,8 +89,12 @@ final class ModelLibrary {
     /// Downloads the typing model if needed and loads it. Retry calls this again after a failure.
     func prepareTypingModel() async {
         let id = typingModel
-        guard let engine = engines[id], await load(id), typingModel == id else { return }
-        typingEngine = engine
+        guard let engine = engines[id] else { return }
+        if await acquire(id), typingModel == id {
+            typingEngine = engine
+        }
+        // Unloads the model if a selection replaced it while it loaded.
+        await release(id)
     }
 
     /// Keeps typing with the current model until the new one is ready, then switches and unloads the old one.
@@ -102,35 +110,45 @@ final class ModelLibrary {
             return
         }
         pendingSelection = id
-        let ready = await load(id)
-        // A later selection replaced this one while it loaded.
-        guard pendingSelection == id else {
-            await unloadUnlessTyping(id)
-            return
+        let ready = await acquire(id)
+        // A later selection may have replaced this one while it loaded; its release then unloads this model.
+        if pendingSelection == id {
+            pendingSelection = nil
+            if ready {
+                let old = typingModel
+                typingModel = id
+                typingEngine = engine
+                await unloadIfIdle(old)
+            }
         }
-        pendingSelection = nil
-        guard ready else { return }
-        let old = typingEngine
-        typingModel = id
-        typingEngine = engine
-        if let old, old !== engine {
-            await old.unload()
-        }
+        await release(id)
     }
 
     /// Downloads a model without making it the typing model.
     func download(_ id: SpeechModelID) async {
-        guard await load(id) else { return }
-        await unloadUnlessTyping(id)
+        _ = await acquire(id)
+        await release(id)
     }
 
     func delete(_ id: SpeechModelID) async throws {
+        while let running = teardowns[id] { _ = await running.value }
+        // No awaits from these checks until the teardown is registered, so no load can start in between.
         guard id != typingModel, id != pendingSelection else { throw ModelLibraryError.inUse }
         guard let engine = engines[id] else { throw ModelLibraryError.unavailable }
-        guard !inFlight.contains(id) else { throw ModelLibraryError.busy }
-        await engine.unload()
-        try await engine.deleteFiles()
-        states[id] = .notDownloaded
+        guard leases[id] == nil, !inFlight.contains(id) else { throw ModelLibraryError.busy }
+        let task = Task { () -> (any Error)? in
+            defer { teardowns[id] = nil }
+            await engine.unload()
+            do {
+                try await engine.deleteFiles()
+                states[id] = .notDownloaded
+                return nil
+            } catch {
+                return error
+            }
+        }
+        teardowns[id] = task
+        if let error = await task.value { throw error }
     }
 
     /// Nil when the typing model isn't ready or hears nothing.
@@ -146,22 +164,52 @@ final class ModelLibrary {
         _ body: @Sendable (any SpeechEngine) async throws -> T
     ) async throws -> T {
         guard let engine = engines[id] else { throw ModelLibraryError.unavailable }
-        guard await load(id) else {
+        guard await acquire(id) else {
+            await release(id)
             if case .failed(let reason)? = states[id] { throw ModelLibraryError.notReady(reason) }
             throw ModelLibraryError.notReady("The model didn't load.")
         }
         do {
             let result = try await body(engine)
-            await unloadUnlessTyping(id)
+            await release(id)
             return result
         } catch {
-            await unloadUnlessTyping(id)
+            await release(id)
             throw error
         }
     }
 
-    /// Joins a download or load already running for the same model.
+    /// Takes a lease and loads the model. Every acquire needs a matching `release`, whether or not it loaded.
+    private func acquire(_ id: SpeechModelID) async -> Bool {
+        leases[id, default: 0] += 1
+        return await load(id)
+    }
+
+    private func release(_ id: SpeechModelID) async {
+        let remaining = (leases[id] ?? 1) - 1
+        leases[id] = remaining > 0 ? remaining : nil
+        await unloadIfIdle(id)
+    }
+
+    /// Unloads a model nothing holds. Registers the teardown before any await, so a later load waits for it.
+    private func unloadIfIdle(_ id: SpeechModelID) async {
+        guard id != typingModel, leases[id] == nil, let engine = engines[id] else { return }
+        if let running = teardowns[id] {
+            _ = await running.value
+            return
+        }
+        let task = Task { () -> (any Error)? in
+            await engine.unload()
+            teardowns[id] = nil
+            return nil
+        }
+        teardowns[id] = task
+        _ = await task.value
+    }
+
+    /// Waits out an unload or delete, then joins a download or load already running for the same model.
     private func load(_ id: SpeechModelID) async -> Bool {
+        while let teardown = teardowns[id] { _ = await teardown.value }
         if let running = loading[id] { return await running.value }
         guard let engine = engines[id] else { return false }
         let task = Task { await run(engine) }
@@ -207,10 +255,5 @@ final class ModelLibrary {
         case (_, let fraction?):
             states[id] = .downloading(fraction)
         }
-    }
-
-    private func unloadUnlessTyping(_ id: SpeechModelID) async {
-        guard id != typingModel, id != pendingSelection, let engine = engines[id] else { return }
-        await engine.unload()
     }
 }
