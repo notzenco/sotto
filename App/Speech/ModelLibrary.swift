@@ -32,13 +32,16 @@ final class ModelLibrary {
     private var typingEngine: (any SpeechEngine)?
     /// The model the latest `select` is switching to.
     private var pendingSelection: SpeechModelID?
-    private var loading: [SpeechModelID: Task<Bool, Never>] = [:]
+    /// The running load for each model and the engine it is loading. A spelling change can replace the engine meanwhile.
+    private var loading: [SpeechModelID: (engine: any SpeechEngine, task: Task<Bool, Never>)] = [:]
     /// Models whose download or load is running, so late progress updates are ignored.
     private var inFlight: Set<SpeechModelID> = []
     /// Jobs holding each model loaded. Every load takes a lease; the last release unloads a model that isn't typing.
     private var leases: [SpeechModelID: Int] = [:]
     /// A running unload or delete. Loads wait for it, so they never race it.
     private var teardowns: [SpeechModelID: Task<(any Error)?, Never>] = [:]
+    /// Engines a spelling change replaced. They unload once no job holds their model, so a Compare or teacher job keeps its engine.
+    private var retired: [SpeechModelID: [any SpeechEngine]] = [:]
 
     /// Falls back to Parakeet v2 when the saved typing model has no engine in this build.
     init(typingModel: SpeechModelID, spelling: SpellingVariety) {
@@ -63,14 +66,15 @@ final class ModelLibrary {
         }
     }
 
-    /// Rebuilds the Apple engine, if any, for the new locale.
+    /// Rebuilds the Apple engine, if any, for the new locale. The old one unloads once no job holds it.
     func setSpelling(_ variety: SpellingVariety) {
         guard variety != spelling else { return }
         spelling = variety
         guard let old = engines[.appleEnglish] else { return }
         engines[.appleEnglish] = makeEngine(for: .appleEnglish, spelling: variety, hintBooster: hintBooster)
         states[.appleEnglish] = nil
-        Task { await old.unload() }
+        retired[.appleEnglish, default: []].append(old)
+        Task { await unloadRetiredIfIdle(.appleEnglish) }
         guard typingModel == .appleEnglish else { return }
         typingEngine = nil
         Task { await prepareTypingModel() }
@@ -81,8 +85,8 @@ final class ModelLibrary {
             let before = states[id]
             Task {
                 let downloaded = await engine.isDownloaded()
-                // A download, load or delete that finished meanwhile knows better.
-                guard !inFlight.contains(id), states[id] == before else { return }
+                // A download, load, delete or spelling change that happened meanwhile knows better.
+                guard !inFlight.contains(id), states[id] == before, engines[id] === engine else { return }
                 if case .failed? = before { return }
                 states[id] = downloaded ? .ready : .notDownloaded
             }
@@ -92,8 +96,8 @@ final class ModelLibrary {
     /// Downloads the typing model if needed and loads it. Retry calls this again after a failure.
     func prepareTypingModel() async {
         let id = typingModel
-        guard let engine = engines[id] else { return }
-        if await acquire(id), typingModel == id {
+        guard engines[id] != nil else { return }
+        if let engine = await acquire(id), typingModel == id {
             typingEngine = engine
         }
         // Unloads the model if a selection replaced it while it loaded.
@@ -108,16 +112,16 @@ final class ModelLibrary {
             if typingEngine == nil { await prepareTypingModel() }
             return
         }
-        guard let engine = engines[id] else {
+        guard engines[id] != nil else {
             states[id] = .failed(ModelLibraryError.unavailable.localizedDescription)
             return
         }
         pendingSelection = id
-        let ready = await acquire(id)
+        let loaded = await acquire(id)
         // A later selection may have replaced this one while it loaded; its release then unloads this model.
         if pendingSelection == id {
             pendingSelection = nil
-            if ready {
+            if let engine = loaded {
                 let old = typingModel
                 typingModel = id
                 typingEngine = engine
@@ -166,8 +170,8 @@ final class ModelLibrary {
         _ id: SpeechModelID,
         _ body: @Sendable (any SpeechEngine) async throws -> T
     ) async throws -> T {
-        guard let engine = engines[id] else { throw ModelLibraryError.unavailable }
-        guard await acquire(id) else {
+        guard engines[id] != nil else { throw ModelLibraryError.unavailable }
+        guard let engine = await acquire(id) else {
             await release(id)
             if case .failed(let reason)? = states[id] { throw ModelLibraryError.notReady(reason) }
             throw ModelLibraryError.notReady("The model didn't load.")
@@ -182,8 +186,9 @@ final class ModelLibrary {
         }
     }
 
-    /// Takes a lease and loads the model. Every acquire needs a matching `release`, whether or not it loaded.
-    private func acquire(_ id: SpeechModelID) async -> Bool {
+    /// Takes a lease and loads the model, returning the engine that loaded. Every acquire needs a matching `release`,
+    /// whether or not it loaded.
+    private func acquire(_ id: SpeechModelID) async -> (any SpeechEngine)? {
         leases[id, default: 0] += 1
         return await load(id)
     }
@@ -191,7 +196,14 @@ final class ModelLibrary {
     private func release(_ id: SpeechModelID) async {
         let remaining = (leases[id] ?? 1) - 1
         leases[id] = remaining > 0 ? remaining : nil
+        await unloadRetiredIfIdle(id)
         await unloadIfIdle(id)
+    }
+
+    /// A lease on the replacement also keeps a retired engine, which errs toward letting a job finish.
+    private func unloadRetiredIfIdle(_ id: SpeechModelID) async {
+        guard leases[id] == nil, let old = retired.removeValue(forKey: id) else { return }
+        for engine in old { await engine.unload() }
     }
 
     /// Unloads a model nothing holds. Registers the teardown before any await, so a later load waits for it.
@@ -210,44 +222,55 @@ final class ModelLibrary {
         _ = await task.value
     }
 
-    /// Waits out an unload or delete, then joins a download or load already running for the same model.
-    private func load(_ id: SpeechModelID) async -> Bool {
-        while let teardown = teardowns[id] { _ = await teardown.value }
-        if let running = loading[id] { return await running.value }
-        guard let engine = engines[id] else { return false }
-        let task = Task { await run(engine) }
-        loading[id] = task
-        let ready = await task.value
-        loading[id] = nil
-        return ready
+    /// Waits out an unload or delete, then joins a download or load already running for the same engine.
+    /// Returns the model's current engine if it loaded.
+    private func load(_ id: SpeechModelID) async -> (any SpeechEngine)? {
+        while true {
+            while let teardown = teardowns[id] { _ = await teardown.value }
+            guard let engine = engines[id] else { return nil }
+            let ready: Bool
+            if let running = loading[id], running.engine === engine {
+                ready = await running.task.value
+            } else {
+                let task = Task { await run(engine) }
+                loading[id] = (engine, task)
+                ready = await task.value
+                if loading[id]?.engine === engine { loading[id] = nil }
+            }
+            // A spelling change replaced the engine while it loaded, so load its replacement.
+            if engines[id] === engine { return ready ? engine : nil }
+        }
     }
 
     private func run(_ engine: any SpeechEngine) async -> Bool {
         let id = engine.id
         inFlight.insert(id)
+        let outcome: ModelState
         if await engine.isLoaded {
-            inFlight.remove(id)
-            states[id] = .ready
-            return true
-        }
-        states[id] = await engine.isDownloaded() ? .preparing : .downloading(nil)
-        do {
-            try await engine.prepare { [weak self] fraction in
-                Task { @MainActor in self?.noteProgress(id, fraction) }
+            outcome = .ready
+        } else {
+            let downloaded = await engine.isDownloaded()
+            if engines[id] === engine { states[id] = downloaded ? .preparing : .downloading(nil) }
+            do {
+                try await engine.prepare { [weak self] fraction in
+                    Task { @MainActor in self?.noteProgress(engine, fraction) }
+                }
+                outcome = .ready
+            } catch {
+                outcome = .failed(String(error.localizedDescription.prefix(200)))
             }
-            inFlight.remove(id)
-            states[id] = .ready
-            return true
-        } catch {
-            inFlight.remove(id)
-            states[id] = .failed(String(error.localizedDescription.prefix(200)))
-            return false
         }
+        // If a spelling change replaced this engine, a load of its replacement owns the model's state.
+        let current = engines[id] === engine
+        if current || loading[id]?.engine === engine { inFlight.remove(id) }
+        if current { states[id] = outcome }
+        return outcome == .ready
     }
 
     /// Progress hops arrive in any order, so the state only moves forward.
-    private func noteProgress(_ id: SpeechModelID, _ fraction: Double?) {
-        guard inFlight.contains(id) else { return }
+    private func noteProgress(_ engine: any SpeechEngine, _ fraction: Double?) {
+        let id = engine.id
+        guard engines[id] === engine, inFlight.contains(id) else { return }
         switch (states[id], fraction) {
         case (.preparing?, _):
             return

@@ -27,7 +27,8 @@ struct EngineResult: Equatable, Sendable {
 
 protocol SpeechEngine: Actor {
     nonisolated var id: SpeechModelID { get }
-    func isDownloaded() -> Bool
+    /// Async because Apple reports its installed locales asynchronously.
+    func isDownloaded() async -> Bool
     /// Downloads the model if needed and loads it. `progress` reports the download fraction in 0...1,
     /// then nil once the model is compiling. It is called on an arbitrary queue.
     func prepare(progress: @escaping @Sendable (Double?) -> Void) async throws

@@ -99,6 +99,7 @@ final class AppModel {
         live.onChange = { [weak self] text in
             self?.provisional(text)
         }
+        refreshLiveContext()
         hotkeys.onRightCommand = { down in
             Task { @MainActor in AppDelegateBridge.model?.noteRightCommand(down, modifierRaw: 0) }
         }
@@ -131,6 +132,11 @@ final class AppModel {
     /// Builds the spelling tables now rather than during the next dictation.
     private func warmSpelling(_ variety: SpellingVariety) {
         Task.detached(priority: .utility) { _ = SpellingConverter.convert("color", to: variety) }
+    }
+
+    /// Apple's live session hears in the spelling's English and listens for the hint words, from the next take.
+    private func refreshLiveContext() {
+        live.configure(locale: settings.spelling, hints: lexicon.hintTerms)
     }
 
     func setLevelWatching(_ on: Bool, for watcher: LevelWatcher) {
@@ -409,6 +415,7 @@ final class AppModel {
         LocalStore.save(settings: settings)
         library.setSpelling(variety)
         warmSpelling(variety)
+        refreshLiveContext()
     }
 
     /// Typing stays on the current model until the new one is ready.
@@ -427,21 +434,25 @@ final class AppModel {
     func addYourWord(_ word: String) {
         lexicon = lexicon.addingYourWord(word)
         LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
     }
 
     func removeYourWord(_ word: String) {
         lexicon = lexicon.removingYourWord(word)
         LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
     }
 
     func deleteLearnedWord(id: UUID) {
         lexicon = lexicon.deleting(id: id)
         LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
     }
 
     func recordLearning(_ s: Substitution, source: LearnSource, clipID: UUID?) {
         lexicon = lexicon.recording(s, source: source, clipID: clipID)
         LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
     }
 
     func openSettings(pane: SettingsPane? = nil) {
