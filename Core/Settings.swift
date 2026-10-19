@@ -120,6 +120,11 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var inputDeviceID: UInt32? = nil
     public var dictationCount: Int = 0
     public var indicator: IndicatorSettings = .init()
+    public var typingModel: SpeechModelID = .parakeetV2
+    /// Nil means the teacher is Off. Stored as an explicit null so Off survives a save.
+    public var teacherModel: SpeechModelID? = .cohere
+    public var spelling: SpellingVariety = .australian
+    public var keepAudio: Bool = true
 
     public var automaticMode: Bool { modeOverride == nil }
 
@@ -127,6 +132,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case keepFirstSyllable, historyHours, modeOverride, inputDeviceID, dictationCount, indicator
+        case typingModel, teacherModel, spelling, keepAudio
     }
 
     public init(from decoder: Decoder) throws {
@@ -138,5 +144,31 @@ public struct AppSettings: Codable, Equatable, Sendable {
         inputDeviceID = try container.decodeIfPresent(UInt32.self, forKey: .inputDeviceID) ?? inputDeviceID
         dictationCount = try container.decodeIfPresent(Int.self, forKey: .dictationCount) ?? dictationCount
         indicator = try container.decodeIfPresent(IndicatorSettings.self, forKey: .indicator) ?? indicator
+        typingModel = (try? container.decodeIfPresent(SpeechModelID.self, forKey: .typingModel)) ?? typingModel
+        if container.contains(.teacherModel) {
+            // Null means Off. An unknown model keeps the default.
+            if (try? container.decodeNil(forKey: .teacherModel)) == true {
+                teacherModel = nil
+            } else {
+                teacherModel = (try? container.decode(SpeechModelID.self, forKey: .teacherModel)) ?? teacherModel
+            }
+        }
+        spelling = (try? container.decodeIfPresent(SpellingVariety.self, forKey: .spelling)) ?? spelling
+        keepAudio = try container.decodeIfPresent(Bool.self, forKey: .keepAudio) ?? keepAudio
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(keepFirstSyllable, forKey: .keepFirstSyllable)
+        try container.encode(historyHours, forKey: .historyHours)
+        try container.encodeIfPresent(modeOverride, forKey: .modeOverride)
+        try container.encodeIfPresent(inputDeviceID, forKey: .inputDeviceID)
+        try container.encode(dictationCount, forKey: .dictationCount)
+        try container.encode(indicator, forKey: .indicator)
+        try container.encode(typingModel, forKey: .typingModel)
+        // Written even when nil, because a missing key decodes to the default teacher.
+        try container.encode(teacherModel, forKey: .teacherModel)
+        try container.encode(spelling, forKey: .spelling)
+        try container.encode(keepAudio, forKey: .keepAudio)
     }
 }

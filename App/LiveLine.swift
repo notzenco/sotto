@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import SottoCore
 import Speech
 import Synchronization
 
@@ -40,6 +41,20 @@ final class LiveLine {
     private var converter: AVAudioConverter?
     private var converterSource: AVAudioFormat?
     private var modernConverter: AnyObject?
+    private var variety: SpellingVariety = .australian
+    private var hints: [String] = []
+    /// A locale download started by a take. It outlives the take, which never waits for it.
+    private var installing: Task<Void, Never>?
+    /// The latest spelling whose locale was installed when a session started. Sessions keep using it while a
+    /// newly chosen locale installs, so Apple-typed takes still hear something.
+    private var installedVariety: SpellingVariety?
+
+    /// Takes effect from the next take; a take in progress keeps the locale and hints it started with.
+    /// A locale that isn't installed yet takes effect from the first take after it installs.
+    func configure(locale: SpellingVariety, hints: [HintTerm]) {
+        variety = locale
+        self.hints = hints.map(\.text)
+    }
 
     func start(_ id: UUID) async {
         if token != nil { cancelSession() }
@@ -54,9 +69,11 @@ final class LiveLine {
             $0.accepting = true
             $0.chunks.removeAll()
         }
+        let variety = variety
+        let hints = hints
         let task = Task { @MainActor [weak self] in
             guard let self else { return }
-            await self.prepare(id)
+            await self.prepare(id, variety: variety, hints: hints)
         }
         setupTask = task
         await task.value
@@ -145,24 +162,43 @@ final class LiveLine {
         publish()
     }
 
-    private func prepare(_ id: UUID) async {
-        let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US"))
+    private func prepare(_ id: UUID, variety: SpellingVariety, hints: [String]) async {
+        let locale = await AppleDictation.locale(for: variety)
         guard token == id, !Task.isCancelled else { return }
         guard let locale else {
             releaseSession()
             return
         }
         guard token == id else { return }
-        let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+        let transcriber = AppleDictation.transcriber(locale: locale)
         do {
             let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber])
             guard token == id, !Task.isCancelled else { return }
             if let request {
-                try? await request.downloadAndInstall()
-                guard token == id, !Task.isCancelled else { return }
+                // finish waits for setup, so a download here would hold up the typed text.
+                // Install in the background and hear in the last installed locale until this one is in,
+                // or skip captions if there's none.
+                if installing == nil {
+                    installing = Task { [weak self] in
+                        try? await request.downloadAndInstall()
+                        self?.installing = nil
+                    }
+                }
+                if let fallback = installedVariety, fallback != variety {
+                    await prepare(id, variety: fallback, hints: hints)
+                    return
+                }
+                releaseSession()
+                return
             }
+            installedVariety = variety
             let sessionAnalyzer = SpeechAnalyzer(modules: [transcriber], options: nil)
             analyzer = sessionAnalyzer
+            if !hints.isEmpty {
+                // Captions still work without the hints.
+                try? await sessionAnalyzer.setContext(AppleDictation.context(hints))
+                guard token == id, !Task.isCancelled else { return }
+            }
             let target = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber])
             guard token == id, !Task.isCancelled else { return }
             guard let target else {

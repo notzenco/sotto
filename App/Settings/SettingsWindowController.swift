@@ -47,7 +47,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+        // Compare may still be open, and keeps the app in the Dock while it is.
+        if model?.isCompareOpen != true {
+            NSApp.setActivationPolicy(.accessory)
+        }
         model?.syncHotkeySource()
     }
 }

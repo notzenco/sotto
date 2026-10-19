@@ -1,6 +1,6 @@
 # Sotto: accent and slang
 
-Status: approved · 19 October 2026. Not yet implemented.
+Status: approved and implemented · 19 October 2026. The plan is `docs/superpowers/plans/2026-10-19-accent-and-slang.md`. See "Decisions made during implementation" for where the build refined this design.
 
 This is project 2 of the round that started with the new look. The order agreed on 19 October 2026:
 
@@ -69,7 +69,7 @@ Offer these as typing models in the Speech pane. All run on the Mac, and none ne
 | Phonon-2 | FluidAudio (`.phonon2`) | Fastest Parakeet, English only. About 360 MB. |
 | Parakeet TDT 0.6B v3 | FluidAudio (`.v3`) | 25 languages, more varied training voices. About 480 MB. |
 | Cohere Transcribe | FluidAudio (`CoherePipeline`) | Near the top of the public English accuracy leaderboard. About 1.8 GB, slower. FluidAudio's `transcribeLong` already handles clips over its 35-second window. |
-| Apple, Australian English | `SpeechAnalyzer` with locale `en_AU` | Built into macOS and already installed on the owner's Mac. Accepts hint words through `AnalysisContext.contextualStrings`. |
+| Apple English (Australian, British or American) | `SpeechAnalyzer` with `DictationTranscriber`, in the locale that matches the spelling setting (`en_AU` by default) | Built into macOS and already installed on the owner's Mac. Accepts hint words through `AnalysisContext.contextualStrings`. |
 
 Each row shows its state: in use, downloaded, downloading with progress, preparing, or a Download button. A downloaded model can be deleted, except the one in use. Only the typing model stays loaded in memory.
 
@@ -81,7 +81,7 @@ FluidAudio's own docs and benchmarks are in its checkout under `Documentation/` 
 
 ### Teacher model
 
-A second picker, "Teacher", chooses the model that rechecks clips in the background. It can be any model other than the typing model, or Off. Picking a model that isn't downloaded starts its download.
+A second picker, "Teacher", chooses the model that rechecks clips in the background. It can be any model other than the typing model, or Off. Picking a model that isn't downloaded doesn't download it; only its Download button does.
 
 It defaults to Cohere Transcribe, but Sotto doesn't download 1.8 GB on its own. Until the owner downloads it, the Teacher row shows "Download Cohere Transcribe (1.8 GB) to start background learning" with a button. Learning from the owner's fixes and from Compare works without a teacher.
 
@@ -207,6 +207,25 @@ Swearing is kept exactly as said, with no option to change it. No engine may mas
 - Swearing has no setting.
 - Apple's live captions follow the spelling setting's locale.
 
+## Decisions made during implementation
+
+The build refined this design in these places. Each was a ruling made on the owner's behalf. The owner can overrule any of them.
+
+- **Apple's transcriber.** The Apple engine and live captions use `DictationTranscriber`. In a hand check, only it honoured contextual strings; `SpeechTranscriber` ignored them.
+- **Apple's name.** The Apple model is called "Apple English (<locale>)", such as "Apple English (Australian)", because its locale follows the spelling setting.
+- **Teacher downloads.** Picking a teacher that isn't downloaded doesn't download it. Only the Teacher row's Download button does.
+- **Switching typing models.** Selecting a typing model that isn't downloaded downloads it, an explicit owner action. Typing stays on the old model until the new one is ready, and the choice is saved only once the switch succeeds, so a relaunch mid-download starts on the model that last worked.
+- **Cohere's decoder.** Cohere Transcribe uses the published v2 decoder, because the v3 decoder files aren't published. A result with any window cut off at the decoder's token cap is discarded, so the teacher and Compare skip that clip rather than learn from truncated text.
+- **Apple stays off the typing path.** The typed text doesn't wait for Apple's live captions unless Apple types, or the typing model returned nothing and Apple's text is the fallback.
+- **Live caption locale.** After a spelling change, live captions keep the last installed locale until the new locale's asset has installed, then switch from the next take.
+- **Compare learning.** Compare picks and typed corrections are learned once per clip, from the final choice, when the window closes or Sotto quits, so a misclick that's changed or cleared teaches nothing. A word deleted after the choice isn't learned back at close; one deleted before it is unblocked, as a Compare pick does.
+- **Compare scoring.** The typing model is shown and scored on its text after hint words, which is what the owner got; the text from before hints stays the learning source. A model counts as right when its text matches the picked or corrected text, ignoring case, punctuation and spelling variety.
+- **Spelling-insensitive learning.** The teacher and Compare share one alignment that maps every word to American spelling first, so "colour" against "color" is never learned.
+- **Hint words keep punctuation.** FluidAudio's CTC replacements are applied to the raw text span by span, so punctuation around a boosted word stays as transcribed.
+- **Capitals.** Your words and learned words written with a capital, such as "Wispr", keep it when a dictation continues a sentence.
+- **Clip privacy and retention.** A take aimed at a password field, or made while secure input is on, never keeps its audio. Expired clips are pruned every minute as well as at launch and after each take, so none outlive 7 days on a Mac left running.
+- **Spelling list.** The list comes from VarCon (2020.12.07): verified clusters at SCOWL level 60 or below, whole families dropped when any word depends on meaning, and swearing and slurs excluded. The generator is `scripts/generate-spelling-table.py`, and About shows the full licence notice. Prose words that start with `--`, `#`, `$` or `@`, or contain a digit, also count as code.
+
 ## Left to the builder
 
 Within the anti-goals: file layout, the clip file format (WAV, CAF or raw floats), the alignment algorithm, the Compare window's exact layout, how download progress is shown, how idle and power state are detected, and which word list is bundled, subject to its licence.
@@ -225,3 +244,12 @@ Within the anti-goals: file layout, the clip file format (WAV, CAF or raw floats
   - leave the Mac idle on power and see teacher findings; unplug and check that the teacher stops;
   - Australian, British and American spelling in prose, and no change in a terminal or code editor;
   - say a few swear words and check they come out as said.
+
+## Known gaps after the build
+
+The final review left these for a later round. The owner can overrule any of them.
+
+- **Fixes ignore spelling variety only partly.** Compare picks and the teacher compare words spelling-insensitively; fix detection doesn't yet, so editing "color" to "colour" by hand can be learned as a hint word.
+- **Teacher picker during a switch.** While a new typing model downloads or prepares, the Teacher picker still lists it and hides the previous one, until the switch finishes.
+- **Late secure input.** If secure input turns on after a take starts and the Accessibility write then fails, the take's clip is kept.
+- **One-sound swaps.** Common swaps like "would" → "could" still count as fixes after one edit. A common-word guard is the next step.

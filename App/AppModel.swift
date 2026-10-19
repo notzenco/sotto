@@ -17,8 +17,8 @@ enum LevelWatcher: Hashable {
 final class AppModel {
     var settings: AppSettings
     var rulebook: Rulebook
+    var lexicon: Lexicon
     var history: [HistoryEntry]
-    var modelPhase: ModelPhase = .missing
     var listening = false
     var inputLevel: Float = 0
     private(set) var settingsActivity = SettingsActivity()
@@ -28,6 +28,10 @@ final class AppModel {
     private(set) var loginRequiresApproval = SMAppService.mainApp.status == .requiresApproval
     var microphones: [InputDevice] = []
     var lastTranscript = ""
+    let library: ModelLibrary
+    let clips: ClipStore
+
+    var modelPhase: ModelPhase { library.typingPhase }
 
     var modelStatusLine: String {
         switch modelPhase {
@@ -40,13 +44,19 @@ final class AppModel {
     private var hold = HoldTracker()
     private let capture = AudioCapture()
     private var levelWatchers: Set<LevelWatcher> = []
-    private let engine = ParakeetEngine()
     private let live = LiveLine()
     private let inserter = TextInserter()
+    @ObservationIgnored private lazy var fixWatcher = FixWatcher(
+        inserter: inserter,
+        isDictating: { [unowned self] in self.listening || self.takes.isCommitting }
+    ) { [weak self] fix in
+        self?.recordLearning(fix, source: .fix, clipID: nil)
+    }
     private let hotkeys = HotkeyMonitor()
     private let indicator = IndicatorPanel()
     private let menu = MenuBarController()
     private var settingsWindowController: SettingsWindowController?
+    private var compareWindowController: CompareWindowController?
     private var captured: FocusSnapshot?
     private var capturedDomain: String?
     private(set) var engineRunning = false
@@ -61,12 +71,25 @@ final class AppModel {
     private var takes = TakeLedger()
     private var postRollTake: TakeLedger.ID?
     private var parkedSamples: [TakeLedger.ID: [Float]] = [:]
+    @ObservationIgnored private var teacher: TeacherScheduler?
     private let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     init() {
-        settings = LocalStore.loadSettings()
+        let settings = LocalStore.loadSettings()
+        self.settings = settings
         rulebook = LocalStore.loadRulebook()
+        lexicon = LocalStore.loadLexicon()
         history = LocalStore.loadHistory()
+        library = ModelLibrary(typingModel: settings.typingModel, spelling: settings.spelling)
+        clips = ClipStore(directory: LocalStore.clipsDirectory)
+        teacher = TeacherScheduler(
+            library: library, clips: clips,
+            settings: { [unowned self] in self.settings },
+            isDictating: { [unowned self] in self.listening || self.takes.isCommitting },
+            isComparing: { [unowned self] in self.compareWindowController?.isComparing ?? false },
+            onSubstitution: { [weak self] substitution, clipID in
+                self?.recordLearning(substitution, source: .teacher, clipID: clipID)
+            })
         indicator.apply(settings.indicator)
         indicator.onHide = { [weak self] in
             self?.setLevelWatching(false, for: .indicator)
@@ -92,6 +115,7 @@ final class AppModel {
         live.onChange = { [weak self] text in
             self?.provisional(text)
         }
+        refreshLiveContext()
         hotkeys.onRightCommand = { down in
             Task { @MainActor in AppDelegateBridge.model?.noteRightCommand(down, modifierRaw: 0) }
         }
@@ -115,8 +139,22 @@ final class AppModel {
         }
         syncHotkeySource()
         watchHotkey()
-        modelPhase = .downloading
-        Task { modelPhase = await engine.prepare() }
+        library.refreshDownloadStates()
+        Task { await library.prepareTypingModel() }
+        clips.prune(now: Date())
+        clips.startPruning()
+        warmSpelling(settings.spelling)
+        teacher?.start()
+    }
+
+    /// Builds the spelling tables now rather than during the next dictation.
+    private func warmSpelling(_ variety: SpellingVariety) {
+        Task.detached(priority: .utility) { _ = SpellingConverter.convert("color", to: variety) }
+    }
+
+    /// Apple's live session hears in the spelling's English and listens for the hint words, from the next take.
+    private func refreshLiveContext() {
+        live.configure(locale: settings.spelling, hints: lexicon.contextualHints())
     }
 
     func setLevelWatching(_ on: Bool, for watcher: LevelWatcher) {
@@ -327,8 +365,7 @@ final class AppModel {
     }
 
     func retryModel() {
-        modelPhase = .downloading
-        Task { modelPhase = await engine.prepare() }
+        Task { await library.prepareTypingModel() }
     }
 
     func setKeepFirstSyllable(_ value: Bool) {
@@ -381,12 +418,87 @@ final class AppModel {
         LocalStore.save(rulebook: rulebook)
     }
 
+    func setKeepAudio(_ on: Bool, deleteExisting: Bool) {
+        settings.keepAudio = on
+        LocalStore.save(settings: settings)
+        if deleteExisting { clips.deleteAll() }
+    }
+
+    func deleteAllClips() {
+        clips.deleteAll()
+    }
+
+    func setSpelling(_ variety: SpellingVariety) {
+        settings.spelling = variety
+        LocalStore.save(settings: settings)
+        library.setSpelling(variety)
+        warmSpelling(variety)
+        refreshLiveContext()
+    }
+
+    /// Typing stays on the current model until the new one is ready. The choice is saved only once the switch
+    /// succeeds, so a relaunch during a download or after a failed load starts on the model that last worked.
+    /// Settings shows the pending choice from `library.pendingSelection` meanwhile.
+    func setTypingModel(_ id: SpeechModelID) {
+        Task {
+            await library.select(id)
+            guard settings.typingModel != library.typingModel else { return }
+            settings.typingModel = library.typingModel
+            LocalStore.save(settings: settings)
+        }
+    }
+
+    /// Nil turns the teacher off.
+    func setTeacherModel(_ id: SpeechModelID?) {
+        settings.teacherModel = id
+        LocalStore.save(settings: settings)
+    }
+
+    func addYourWord(_ word: String) {
+        lexicon = lexicon.addingYourWord(word)
+        LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
+    }
+
+    func removeYourWord(_ word: String) {
+        lexicon = lexicon.removingYourWord(word)
+        LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
+    }
+
+    func deleteLearnedWord(id: UUID) {
+        lexicon = lexicon.deleting(id: id)
+        LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
+    }
+
+    func recordLearning(_ s: Substitution, source: LearnSource, clipID: UUID?) {
+        lexicon = lexicon.recording(s, source: source, clipID: clipID)
+        LocalStore.save(lexicon: lexicon)
+        refreshLiveContext()
+    }
+
     func openSettings(pane: SettingsPane? = nil) {
         refreshMicrophones()
         if settingsWindowController == nil {
             settingsWindowController = SettingsWindowController(model: self)
         }
         settingsWindowController?.show(pane: pane)
+    }
+
+    var isSettingsOpen: Bool { settingsWindowController?.isOpen ?? false }
+    var isCompareOpen: Bool { compareWindowController?.isOpen ?? false }
+
+    func openCompare() {
+        if compareWindowController == nil {
+            let runner = CompareRunner(
+                library: library, clips: clips,
+                hints: { [unowned self] in self.lexicon.hintTerms },
+                isDictating: { [unowned self] in self.listening || self.takes.isCommitting })
+            compareWindowController = CompareWindowController(model: self, runner: runner)
+        }
+        library.refreshDownloadStates()
+        compareWindowController?.show()
     }
 
     private func apply(_ event: HoldTracker.Event) {
@@ -409,6 +521,7 @@ final class AppModel {
             guard let take = takes.finish() else { return }
             listening = false
             locked = false
+            teacher?.noteDictation()
             indicator.show(.working)
             let snapshot = captured
             let domain = capturedDomain
@@ -419,6 +532,7 @@ final class AppModel {
             guard let take = takes.cancel() else { return }
             listening = false
             locked = false
+            teacher?.noteDictation()
             if postRollTake == take { postRollTake = nil }
             parkedSamples.removeValue(forKey: take)
             capture.cancelUtterance()
@@ -434,6 +548,8 @@ final class AppModel {
     }
 
     private func beginTake(_ take: TakeLedger.ID) {
+        teacher?.noteDictation()
+        compareWindowController?.stopPlayback()
         if let previous = postRollTake {
             parkedSamples[previous] = capture.endUtterance()
             postRollTake = nil
@@ -448,6 +564,8 @@ final class AppModel {
         }
         setLevelWatching(true, for: .indicator)
         indicator.show(.listening(handsFree: locked))
+        // After beginTake returns, so a slow field read can't delay capture starting.
+        Task { [weak self] in self?.fixWatcher.check() }
     }
 
     private func provisional(_ text: String) {
@@ -459,6 +577,7 @@ final class AppModel {
         defer {
             takes.complete(take)
             parkedSamples.removeValue(forKey: take)
+            teacher?.noteDictation()
         }
         let started = Date()
         try? await Task.sleep(nanoseconds: 60_000_000)
@@ -476,10 +595,13 @@ final class AppModel {
         }
         let audioEnded = Date()
 
-        let transcriptTask = Task { @MainActor () -> String? in
-            guard self.takes.allowsInsertion(take), self.modelPhase == .ready else { return nil }
-            do { return try await self.engine.transcribe(samples) }
-            catch { return nil }
+        let typingModel = library.typingModel
+        // Apple's engine is the live-caption session, so its final text is the typing model's result.
+        let usesLiveText = typingModel == .appleEnglish
+        let hints = usesLiveText ? [] : lexicon.hintTerms
+        let transcriptTask = Task { @MainActor () -> EngineResult? in
+            guard !usesLiveText, self.takes.allowsInsertion(take), self.modelPhase == .ready else { return nil }
+            return await self.library.transcribeTyping(samples, hints: hints)
         }
         let appleTask = Task { @MainActor () -> String in
             guard self.takes.allowsInsertion(take) else { return "" }
@@ -488,7 +610,10 @@ final class AppModel {
         }
         let transcript = await transcriptTask.value
         guard takes.allowsInsertion(take) else { return }
-        let apple = await appleTask.value
+        // The typing model's words never wait for Apple's session, which finishes or is cancelled on its own.
+        // Its text is needed only when Apple types, as the fallback, or for Copy Last while the model downloads.
+        let needsLiveText = usesLiveText || modelPhase != .ready || (transcript?.hinted.isEmpty ?? true)
+        let apple = needsLiveText ? await appleTask.value : ""
         guard takes.allowsInsertion(take) else { return }
         let transcribed = Date()
 
@@ -499,14 +624,21 @@ final class AppModel {
             return
         }
 
-        let raw = transcript ?? (apple.isEmpty ? nil : apple)
-        guard let raw, !raw.isEmpty else {
+        // Without the typing model's result, the live text stands in for both, as Apple's engine produced it.
+        let heard = transcript ?? EngineResult(raw: apple, hinted: apple)
+        let clipModel = transcript == nil ? SpeechModelID.appleEnglish : typingModel
+        guard !heard.hinted.isEmpty else {
             present(.problem(.notHeard), take: take)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
         let mode = settings.modeOverride ?? AppIdentity.defaultMode(bundleID: snapshot?.bundleID, domain: domain)
-        let formatted = rulebook.applying(to: TranscriptFormatter.format(raw, mode: mode))
+        var formatted = TranscriptFormatter.format(heard.hinted, mode: mode)
+        let spelling = settings.spelling
+        let respell: (String) -> String = mode == .prose ? { SpellingConverter.convert($0, to: spelling) } : { $0 }
+        formatted = respell(formatted)
+        // The owner's Names win over spelling, so each heard form also matches its respelled form.
+        formatted = rulebook.applying(to: formatted, alsoMatching: respell)
         guard !formatted.isEmpty else {
             present(.problem(.notHeard), take: take)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
@@ -532,6 +664,7 @@ final class AppModel {
         switch result {
         case .inserted:
             present(.done, take: take)
+            fixWatcher.watch()
         case .kept(let problem):
             present(.problem(problem), take: take)
         case .cancelled:
@@ -546,6 +679,17 @@ final class AppModel {
             history.removeAll { $0.date < cutoff }
             LocalStore.save(history: history)
         }
+        // Speech aimed at a password field is never kept.
+        let secure = snapshot?.isSecureField == true || snapshot?.secureInput == true
+            || result == .kept(.passwordField)
+        if settings.keepAudio, !samples.isEmpty, !secure {
+            clips.save(samples: samples, record: ClipRecord(
+                date: Date(), bundleID: snapshot?.bundleID, domain: domain,
+                durationSeconds: Double(samples.count) / 16_000, typingModel: clipModel,
+                rawText: heard.raw, hintedText: heard.hinted, typedText: formatted))
+        }
+        // Also while Keep audio is off, so clips kept from before still go after 7 days.
+        clips.prune(now: Date())
         logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: injected)
     }
 
@@ -554,6 +698,7 @@ final class AppModel {
         if rulebook.replacements.contains(where: { $0.written.split(separator: " ").contains { $0 == word } }) {
             return true
         }
+        if lexicon.writesWithCapital(word) { return true }
         guard let start = text.range(of: word)?.lowerBound else { return false }
         let tagger = NLTagger(tagSchemes: [.nameType])
         tagger.string = text

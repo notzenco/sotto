@@ -79,6 +79,30 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(s)), s)
     }
 
+    func testOldSettingsDecodeNewFieldsToDefaults() throws {
+        let json = #"{"keepFirstSyllable":false,"historyHours":24,"dictationCount":7}"#
+        let s = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+        XCTAssertEqual(s.historyHours, 24); XCTAssertFalse(s.keepFirstSyllable); XCTAssertEqual(s.dictationCount, 7)
+        XCTAssertEqual(s.typingModel, .parakeetV2); XCTAssertEqual(s.teacherModel, .cohere)
+        XCTAssertEqual(s.spelling, .australian); XCTAssertTrue(s.keepAudio)
+    }
+
+    func testExplicitNullTeacherStaysOff() throws {
+        let s = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"teacherModel":null}"#.utf8))
+        XCTAssertNil(s.teacherModel)
+    }
+
+    func testUnknownModelKeepsDefaultAndOtherFields() throws {
+        let s = try JSONDecoder().decode(AppSettings.self, from: Data(#"{"typingModel":"whisper","spelling":"british","historyHours":24}"#.utf8))
+        XCTAssertEqual(s.typingModel, .parakeetV2); XCTAssertEqual(s.spelling, .british); XCTAssertEqual(s.historyHours, 24)
+    }
+
+    func testSettingsRoundTripKeepsTeacherOff() throws {
+        var s = AppSettings(); s.teacherModel = nil
+        let back = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(s))
+        XCTAssertNil(back.teacherModel)
+    }
+
     func testHexPresets() {
         XCTAssertEqual(RGBColor.paper.hex, "#F4EFE6")
         XCTAssertEqual(RGBColor.presets.map(\.hex), ["#F4EFE6", "#FFFFFF", "#5AC8FA", "#7EE0A1", "#FF7EB6", "#FFB340"])
