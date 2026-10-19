@@ -26,6 +26,7 @@ final class ModelLibrary {
     private(set) var typingModel: SpeechModelID
 
     private var spelling: SpellingVariety
+    private let hintBooster: HintBooster
     private var engines: [SpeechModelID: any SpeechEngine]
     /// The loaded engine dictation uses. Nil until the typing model is ready.
     private var typingEngine: (any SpeechEngine)?
@@ -41,10 +42,12 @@ final class ModelLibrary {
 
     /// Falls back to Parakeet v2 when the saved typing model has no engine in this build.
     init(typingModel: SpeechModelID, spelling: SpellingVariety) {
+        let hintBooster = HintBooster()
         var engines: [SpeechModelID: any SpeechEngine] = [:]
         for id in SpeechModelID.allCases {
-            engines[id] = makeEngine(for: id, spelling: spelling)
+            engines[id] = makeEngine(for: id, spelling: spelling, hintBooster: hintBooster)
         }
+        self.hintBooster = hintBooster
         self.engines = engines
         self.spelling = spelling
         self.typingModel = engines[typingModel] == nil ? .parakeetV2 : typingModel
@@ -65,7 +68,7 @@ final class ModelLibrary {
         guard variety != spelling else { return }
         spelling = variety
         guard let old = engines[.appleEnglish] else { return }
-        engines[.appleEnglish] = makeEngine(for: .appleEnglish, spelling: variety)
+        engines[.appleEnglish] = makeEngine(for: .appleEnglish, spelling: variety, hintBooster: hintBooster)
         states[.appleEnglish] = nil
         Task { await old.unload() }
         guard typingModel == .appleEnglish else { return }

@@ -7,13 +7,15 @@ import Synchronization
 actor ParakeetFamilyEngine: SpeechEngine {
     nonisolated let id: SpeechModelID
     private let version: AsrModelVersion
+    private let booster: HintBooster
 
     private var manager: AsrManager?
     private var preparation: Task<AsrManager, any Error>?
 
-    init(id: SpeechModelID, version: AsrModelVersion) {
+    init(id: SpeechModelID, version: AsrModelVersion, booster: HintBooster) {
         self.id = id
         self.version = version
+        self.booster = booster
     }
 
     var isLoaded: Bool { manager != nil }
@@ -49,7 +51,10 @@ actor ParakeetFamilyEngine: SpeechEngine {
         do {
             let result = try await manager.transcribeFresh(samples)
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            return text.isEmpty ? nil : EngineResult(raw: text, hinted: text)
+            if text.isEmpty { return nil }
+            let hinted = await booster.apply(
+                text: text, tokenTimings: result.tokenTimings ?? [], samples: samples, hints: hints)
+            return EngineResult(raw: text, hinted: hinted)
         } catch ASRError.invalidAudioData {
             return nil
         }
