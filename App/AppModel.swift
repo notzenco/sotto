@@ -53,6 +53,7 @@ final class AppModel {
     private let indicator = IndicatorPanel()
     private let menu = MenuBarController()
     private var settingsWindowController: SettingsWindowController?
+    private var compareWindowController: CompareWindowController?
     private var captured: FocusSnapshot?
     private var capturedDomain: String?
     private(set) var engineRunning = false
@@ -462,6 +463,21 @@ final class AppModel {
             settingsWindowController = SettingsWindowController(model: self)
         }
         settingsWindowController?.show(pane: pane)
+    }
+
+    var isSettingsOpen: Bool { settingsWindowController?.isOpen ?? false }
+    var isCompareOpen: Bool { compareWindowController?.isOpen ?? false }
+
+    func openCompare() {
+        if compareWindowController == nil {
+            let runner = CompareRunner(
+                library: library, clips: clips,
+                hints: { [unowned self] in self.lexicon.hintTerms },
+                isDictating: { [unowned self] in self.listening || self.takes.isCommitting })
+            compareWindowController = CompareWindowController(model: self, runner: runner)
+        }
+        library.refreshDownloadStates()
+        compareWindowController?.show()
     }
 
     private func apply(_ event: HoldTracker.Event) {
