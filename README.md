@@ -1,8 +1,8 @@
 # Sotto
 
-Sotto is on-device dictation for the Mac. Hold Right Command, speak, and let go. The text lands in the field you were typing in. Audio never leaves the machine.
+Sotto is on-device dictation for the Mac. Hold Right Command, speak, and let go. The text lands in the field you were typing in. Audio never leaves the machine, and Sotto learns the words it gets wrong.
 
-It is a menu-bar app with no account and no cloud service. Speech is transcribed by NVIDIA Parakeet TDT 0.6B v2 running through [FluidAudio](https://github.com/FluidInference/FluidAudio) on Core ML. While you talk, an animated indicator follows your voice. Apple's provisional words can appear in a caption if you turn them on.
+It is a menu-bar app with no account and no cloud service. Speech is transcribed on the Mac by a model you choose: NVIDIA Parakeet TDT 0.6B v2 by default, other Parakeet models or Cohere Transcribe through [FluidAudio](https://github.com/FluidInference/FluidAudio) on Core ML, or Apple's built-in dictation. While you talk, an animated indicator follows your voice. Apple's provisional words can appear in a caption if you turn them on.
 
 This is an early prototype. It is English only and has been run on one Apple silicon Mac with macOS 27.2.
 
@@ -27,11 +27,40 @@ If you start a new take before the last one has finished, the earlier take's tex
 - **Prose** is used in mail, chat, browsers, Word and everything else. It drops fillers ("um", "uh"), capitalises sentences, and turns spoken punctuation into marks ("comma", "period", "question mark", "new paragraph"). One hold is one sentence: a take that ends without a closing mark gets a full stop.
 - **Literal** is used in terminals and code editors. It never rewrites. Symbol words become symbols ("dot", "slash", "underscore", "open paren"), and "word dot" types the word "dot" itself.
 
-**Back-to-back takes.** Sotto reads the few characters before the cursor and fits each take to them. It adds a space after a word or a closing mark, but not at the start of a field, after a space or new line, or after an opening bracket or quote. In Prose, a take that continues a sentence (after a word, number, comma or semicolon) starts in lowercase, unless its first word is "I", an acronym, one of your spellings, or a name. In fields that hide their text, Sotto assumes you're continuing when its last take went into the same field less than 3 minutes earlier. Terminals always use that fallback.
+**Back-to-back takes.** Sotto reads the few characters before the cursor and fits each take to them. It adds a space after a word or a closing mark, but not at the start of a field, after a space or new line, or after an opening bracket or quote. In Prose, a take that continues a sentence (after a word, number, comma or semicolon) starts in lowercase, unless its first word is "I", an acronym, one of your Names, a capitalised word from Your words or Learned, or a name. In fields that hide their text, Sotto assumes you're continuing when its last take went into the same field less than 3 minutes earlier. Terminals always use that fallback.
 
 **Names.** Settings → Dictionary → Names maps what Sotto heard to how you spell it. A deleted spelling is remembered as deleted, so the same phrase can't be added again.
 
+**Spelling.** Settings → Speech → Spelling is Australian (the default), British or American. After formatting, Prose text is respelled word by word, so "make the button color darker" becomes "make the button colour darker", keeping each word's case. Literal mode is never respelled. In Prose, words that look like code are skipped: anything inside backticks, camelCase and snake_case words, dotted names such as `file.color`, all-caps words, URLs, file paths, flags, `#tags`, `$variables`, `@handles` and words with digits. Your Names win over spelling. Swearing always comes out exactly as said.
+
 **Inserting text.** Mail and most other apps get the text written through Accessibility, with a paste as the fallback. Chat apps, code editors, browsers, Word and remote desktops always get a paste. The clipboard is borrowed and restored afterwards, unless something else changed it in the meantime. Terminals get typed characters, because a paste can wedge some programs. Password fields are refused, and so is pasting or typing while secure input is on. If focus moved away during the take, the text is kept for Copy Last instead of going into the wrong field.
+
+## Speech models and learning
+
+**Typing model.** Settings → Speech lists the models that can type:
+
+| Model | Size | Notes |
+|---|---|---|
+| Parakeet TDT 0.6B v2 | About 470 MB | The default. English. |
+| Parakeet Ultra | About 630 MB | FluidAudio's most accurate Parakeet. |
+| Phonon-2 | About 360 MB | The fastest Parakeet. English only. |
+| Parakeet TDT 0.6B v3 | About 480 MB | 25 languages, more varied training voices. |
+| Cohere Transcribe | About 1.8 GB | Slower and very accurate. Takes no hint words. |
+| Apple English | Built in | Apple's dictation, in the English that matches the spelling setting. |
+
+Each row shows whether the model is in use, downloaded, downloading, or preparing, or offers a Download button. A downloaded model other than the chosen one can be deleted. Apple English is part of macOS, so it has nothing to download or delete. Choosing a model that isn't downloaded downloads it. Its first load compiles it for the Neural Engine, shown as "Preparing…", which can take a minute or more. Sotto keeps typing with the previous model until the new one is ready, and only then saves the choice. Only the typing model stays loaded.
+
+**Hint words.** Words Sotto has learned, and words you add under Your words, are passed to the typing model as hint words. Parakeet models use FluidAudio's custom vocabulary, which rescores the text against the audio before changing a word, so a real "Maggie" stays "Maggie". It needs a separate model of about 100 MB, downloaded the first time a hint word exists. Apple English gets the words as contextual strings. Hint words are never blind text replacements.
+
+**Learning.** Sotto learns from three kinds of evidence. Differences in case, punctuation and spelling variety never count, and a change longer than four words is treated as a rewrite.
+
+- **Your fixes.** About 20 seconds after inserting, and when your next dictation starts within 2 minutes, Sotto reads the field back through Accessibility. If you changed one short phrase to something that sounds like it, such as "Madgie" to "my G", the word is learned at once. Fields that hide their text are skipped, and password fields are never read.
+- **Compare picks.** Your final choice for each clip in the Compare window is learned once, when the window closes or Sotto quits.
+- **The teacher.** Settings → Speech → Teacher picks a slower model that rechecks kept clips when you haven't dictated for 5 minutes and the Mac is on mains power. A phrase it hears differently on two different clips is learned. It stops when you dictate, unplug, or open Compare. The default teacher is Cohere Transcribe, but Sotto never downloads it on its own; only its Download button does. Off turns the teacher off.
+
+Learned words appear under Settings → Dictionary → Learned. Deleting one stops it being learned again automatically. Adding it under Your words, or picking it again in Compare, brings it back.
+
+**Compare.** Settings → Speech → Compare… opens a window with your kept clips, newest first. Each clip has a play button and every downloaded model's version, with your hint words applied where the model takes them. Models that haven't seen a clip run while the window is open, one at a time. Click the version that matches what you said, or type the right text. A running score shows how often each model was right, ignoring spelling variety. The typing model is shown and scored on its text after hint words, which is what you got.
 
 ## Indicator and Settings
 
@@ -55,11 +84,11 @@ Open Settings from the menu bar, with ⌘, while Sotto is in front, or by openin
 | Shortcut | Right Command instructions, the chord recorder and an Accessibility fix button when needed. |
 | Indicator | Style, position, size, colour, background, words and display, with a live preview. |
 | Microphone | Input device, "Keep the first syllable" and a level meter. The meter only runs while this page is showing and the microphone is open. |
-| Speech | Automatic, Prose or Literal mode; model status and Retry after a failure; English language. |
-| Dictionary | Add or delete heard → written spellings. |
+| Speech | Automatic, Prose or Literal mode; the typing model list with Download, Preparing, Retry and Delete; Teacher; Spelling; Compare models with Keep audio, the kept clip count, Delete All and Compare…. |
+| Dictionary | Learned words with where each came from and Delete; Your words; Names (heard → written). |
 | History | Off or 24 hours, with recent transcripts and a Copy button for each. |
-| Privacy & Permissions | Current Microphone and Accessibility status, buttons to request access or open System Settings, and the privacy statement. |
-| About | App version and speech model credit. |
+| Privacy & Permissions | Current Microphone and Accessibility status, buttons to request access or open System Settings, and the privacy statement, which follows Keep audio. |
+| About | App version, a credit for each speech model, and the spelling list's credit and full licence. |
 
 ## Requirements
 
@@ -67,7 +96,7 @@ Open Settings from the menu bar, with ⌘, while Sotto is in front, or by openin
 - Xcode 27. This was built with Xcode 27 beta 6 (Swift 6.4), in Swift 6 language mode with complete concurrency checking.
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) 2.45 or later. `project.yml` is the source of truth for the Xcode project.
 - An Apple Development signing certificate (see [Signing](#signing)).
-- About 450 MB of disk space for the speech model, which downloads on first launch.
+- About 470 MB of disk space for the default speech model, which downloads on first launch, and about 100 MB more for hint words once Sotto has one. Other models download only when you ask.
 
 ## Build and run
 
@@ -103,28 +132,33 @@ Until Accessibility is on, Sotto opens its Settings window on Privacy & Permissi
 
 1. **Hotkey.** A listen-only event tap (`HotkeyMonitor`) watches modifier changes for the right-hand Command device bit, plus Escape and chord keys. `HoldTracker` turns presses and releases into start, finish, lock and cancel. A 30 ms poll of the modifier state stands in for the tap only while Accessibility is off.
 2. **Capture.** `AudioCapture` taps the microphone in the hardware's own format and resamples it to 16 kHz mono. With "Keep the first syllable" on, the engine stays running and keeps the last 300 ms in an in-memory ring. That way the start of a word spoken as you press the key is not lost.
-3. **Live line.** `LiveLine` feeds the same audio to Apple's `SpeechAnalyzer`. Its provisional words appear only in the indicator's caption while listening, when "Show words as you talk" is on.
-4. **Transcription.** On release, the whole take goes to Parakeet (`ParakeetEngine`). If Parakeet returns no transcript, Apple's live text is used instead. Until the model is ready, available live text is kept for Copy Last and is not inserted. The indicator says "Still downloading the speech model".
-5. **Formatting.** `TranscriptFormatter` applies Prose or Literal rules, then `Rulebook` applies your spellings. `InsertJoin` fits the result to the text before the cursor, which `TextInserter` reads through Accessibility.
+3. **Live line.** `LiveLine` feeds the same audio to Apple's `SpeechAnalyzer`, using `DictationTranscriber` in the English that matches the spelling setting, with hint words as contextual strings. Its provisional words appear only in the indicator's caption while listening, when "Show words as you talk" is on. When Apple English types, this session's final text is the result.
+4. **Transcription.** On release, the whole take goes to the typing model through `ModelLibrary` (`App/Speech/`), which owns one engine per model behind the `SpeechEngine` protocol: `ParakeetFamilyEngine`, `CohereEngine` and `AppleEngine`. `HintBooster` then rescores Parakeet text against the hint words. If the typing model returns no transcript, Apple's live text is used instead; otherwise the typed text doesn't wait for Apple's session. Until the model is ready, available live text is kept for Copy Last and is not inserted. The indicator says "Still downloading the speech model".
+5. **Formatting.** `TranscriptFormatter` applies Prose or Literal rules, `SpellingConverter` respells Prose, then `Rulebook` applies your Names. `InsertJoin` fits the result to the text before the cursor, which `TextInserter` reads through Accessibility.
 6. **Insertion.** `InsertPlanner` picks Accessibility, paste, typing or refusal for the focused app, and `TextInserter` carries it out. The indicator shows a tick on success or a problem message if the text could not be inserted.
+7. **Learning.** With Keep audio on, `ClipStore` saves the take's audio and record. `FixWatcher` reads the field back for your fixes, `TeacherScheduler` runs the teacher, and the Compare window (`App/Compare/`) runs every downloaded model. `PhraseAligner`, `FixDetector` and `SoundAlike` find the misheard phrases, and `Lexicon` decides when a word is learned.
 
 ### Layout
 
 | Path | Contents |
 |---|---|
-| `Core/` | `SottoCore`, a static library of pure logic: hold timing, modes and app classes, formatting, spellings, joining takes to the text before the cursor, insert routing, the pre-roll ring, indicator settings, states, layout, bars and level smoothing. |
+| `Core/` | `SottoCore`, a static library of pure logic: hold timing, modes and app classes, formatting, Names, spelling conversion and its word list, joining takes to the text before the cursor, insert routing, the pre-roll ring, indicator settings, states, layout, bars and level smoothing, the speech model list, clip records and Compare scoring, phrase alignment, fix detection and the learned-word lexicon. |
 | `Tests/` | Unit tests for `SottoCore`. |
-| `App/` | The menu-bar app: audio, speech engines, hotkey, text insertion, menus and storage. |
+| `App/` | The menu-bar app: audio, hotkey, live line, text insertion, clip storage, the fix watcher, the teacher, menus and storage. |
+| `App/Speech/` | The speech engines behind one protocol, the model library and hint-word rescoring. |
+| `App/Compare/` | The Compare window, its model runner, picks and clip playback. |
 | `App/Indicator/` | Indicator views, panel and text cursor lookup. |
 | `App/Settings/` | Sidebar Settings window and its panes. |
+| `scripts/` | `generate-spelling-table.py`, which builds `Core/SpellingTable.swift` from VarCon. |
 | `project.yml` | XcodeGen definition of the three targets and the `Sotto` scheme. |
 
 ## Privacy
 
-- Audio stays in memory. The pre-roll ring is overwritten continuously and never written to disk.
-- Transcription runs on this Mac. Nothing is sent to a server. Network use is for model downloads, including Apple's live speech assets when needed.
+- **Audio is kept on this Mac by default.** With Settings → Speech → Keep audio on (the default), each finished dictation's audio is saved in `~/Library/Application Support/Sotto/Clips/`, with a small JSON record of what the typing model heard and what was typed. Clips are used only on this Mac, by Compare and the teacher, and are never sent anywhere. They are deleted after 7 days, checked every minute. Cancelled takes, takes with nothing heard and takes aimed at a password field aren't kept. Turning Keep audio off stops new clips and asks whether to delete the existing ones, and Delete All removes them at once. The statement in Privacy & Permissions follows the toggle.
+- The pre-roll ring stays in memory. It is overwritten continuously and never written to disk.
+- Transcription and learning run on this Mac. Nothing is sent to a server. Network use is for model downloads, including Apple's speech assets when needed.
 - History is off by default. When it is on (24 hours), transcripts older than a day are dropped the next time you dictate.
-- Dictation settings, spellings and history live in `~/Library/Application Support/Sotto/`. The Parakeet model lives in `~/Library/Application Support/FluidAudio/Models/`. The last Settings category and window frame use macOS preferences.
+- Dictation settings, Names, learned words and Your words, history and clips live in `~/Library/Application Support/Sotto/`. FluidAudio models (Parakeet, Cohere Transcribe and the hint-word model) live in `~/Library/Application Support/FluidAudio/Models/`. Apple's speech assets are managed by macOS. The last Settings category and window frame use macOS preferences.
 
 ## Troubleshooting
 
@@ -146,6 +180,7 @@ log show --last 10m --info --predicate 'subsystem == "app.sotto.desktop"'
 
 ## Credits
 
-- Speech model: [NVIDIA Parakeet TDT 0.6B v2](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2), licensed CC-BY-4.0.
+- Speech models: [NVIDIA Parakeet TDT 0.6B v2](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) and v3 (CC-BY-4.0), Moondream Parakeet Ultra (CC-BY-4.0), Fermion Research Phonon-2 (CC-BY-4.0, based on Parakeet TDT 0.6B v3) and Cohere Labs Cohere Transcribe 03-2026 (Apache-2.0), all run through FluidAudio. About lists each credit.
+- Spelling list: adapted from VarCon by Kevin Atkinson and Benjamin Titze, from word lists by Geoff Kuenning (a modified subset of common words). Its full licence notice is in About and in `Core/SpellingTable.swift`.
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) by FluidInference, Apache License 2.0.
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus, MIT License.

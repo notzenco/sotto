@@ -1,5 +1,7 @@
 # Accent and Slang Implementation Plan
 
+**Status:** implemented on branch `accent-and-slang`; see the spec's "Decisions made during implementation" for departures from this plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let the owner choose and compare local speech models on their own voice, teach the fast typing model their words through hint words learned from their fixes, Compare picks and a background teacher model, and add Australian/British/American spelling with swearing kept as said.
@@ -367,6 +369,7 @@ Apple Speech facts (SDK 27; all available on macOS 26):
 - `SpeechTranscriber.supportedLocale(equivalentTo:)` maps `Locale(identifier: variety.localeIdentifier)`; `en_AU`, `en_GB` and `en_US` are all supported and installed on the owner's Mac.
 - `AnalysisContext()` with `context.contextualStrings[.general] = hints.map(\.text)`; attach with `try await analyzer.setContext(context)` after `SpeechAnalyzer(modules:options:)`.
 - Whether `SpeechTranscriber` honours contextual strings is undocumented. `DictationTranscriber(locale:preset:)` (presets include `.progressiveShortDictation`, `.shortDictation`) is the alternative.
+- As built: only `DictationTranscriber` honoured contextual strings in the Step 3 check, so `LiveLine` and `AppleEngine` use it.
 - Neither transcriber masks swearing unless `.etiquetteReplacements` is passed. Never pass it.
 
 - [ ] **Step 1: Implement `LiveLine.configure` and the locale switch** (replace the hard-coded `en-US`).
