@@ -1,0 +1,94 @@
+name: Sotto
+options:
+  bundleIdPrefix: app.sotto
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    # Ad-hoc signing pins the designated requirement to the cdhash, so every
+    # rebuild loses the Accessibility and Microphone grants. A certificate
+    # identity keeps the requirement, and the grants, stable across builds.
+    CODE_SIGN_IDENTITY: "Apple Development"
+    DEVELOPMENT_TEAM: N7447R8KW2
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_APP_SANDBOX: NO
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    revision: 2d6c42ca5f3accc0faf9fee9e0fff5b9b2cf6042
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: "3.1.0"
+targets:
+  SottoCore:
+    type: library.static
+    platform: macOS
+    sources:
+      - path: Core
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sotto.core
+        GENERATE_INFOPLIST_FILE: YES
+        DEFINES_MODULE: YES
+        ENABLE_TESTABILITY: YES
+        SKIP_INSTALL: YES
+  SottoCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: SottoCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sotto.core.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: ""
+        BUNDLE_LOADER: ""
+        CODE_SIGNING_ALLOWED: NO
+  Sotto:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+    dependencies:
+      - target: SottoCore
+      - package: FluidAudio
+        product: FluidAudio
+      - package: KeyboardShortcuts
+        product: KeyboardShortcuts
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sotto.desktop
+        PRODUCT_NAME: Sotto
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        # The hardened runtime denies the microphone without this entitlement.
+        CODE_SIGN_ENTITLEMENTS: App/Sotto.entitlements
+        # Keep Debug builds as one real executable rather than Xcode's stub
+        # plus debug dylib, so privacy grants and crash reports name the app.
+        ENABLE_DEBUG_DYLIB: NO
+schemes:
+  Sotto:
+    build:
+      targets:
+        Sotto: all
+        SottoCore: all
+        SottoCoreTests: [test]
+    test:
+      targets:
+        - SottoCoreTests
+    run:
+      config: Debug
