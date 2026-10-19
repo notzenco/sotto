@@ -81,14 +81,17 @@ public struct ModelScore: Equatable, Sendable {
 }
 
 public enum CompareScore {
-    /// A clip is judged once it has a Compare pick or a corrected text.
+    /// A clip is judged once it has a Compare pick or a corrected text. A model is right when it was picked,
+    /// or its text matches the picked model's text or the corrected text, ignoring case and punctuation.
     public static func tally(_ records: [ClipRecord]) -> [SpeechModelID: ModelScore] {
         var scores: [SpeechModelID: ModelScore] = [:]
         for record in records where record.pickedModel != nil || record.correctedText != nil {
             let corrected = record.correctedText.map(normalized)
+            let picked = record.pickedModel.flatMap { record.modelTexts[$0.rawValue] }.map(normalized)
             for (key, text) in record.modelTexts {
                 guard let model = SpeechModelID(rawValue: key) else { continue }
-                let right = model == record.pickedModel || normalized(text) == corrected
+                let plain = normalized(text)
+                let right = model == record.pickedModel || plain == picked || plain == corrected
                 var score = scores[model] ?? ModelScore(right: 0, judged: 0)
                 score.judged += 1
                 if right { score.right += 1 }

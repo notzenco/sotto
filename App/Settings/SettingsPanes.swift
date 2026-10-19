@@ -213,6 +213,10 @@ struct SpeechSettingsPane: View {
                             .disabled(model.clips.records.isEmpty)
                     }
                 }
+                LabeledContent("See each model's version of your clips and pick the right one") {
+                    Button("Compare…") { model.openCompare() }
+                        .disabled(model.clips.records.isEmpty)
+                }
             }
         }
         .formStyle(.grouped)

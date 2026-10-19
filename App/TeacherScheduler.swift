@@ -15,6 +15,8 @@ final class TeacherScheduler {
     private let clips: ClipStore
     private let settings: () -> AppSettings
     private let isDictating: () -> Bool
+    /// True while the Compare window may load a model, so two large models never load at once.
+    private let isComparing: () -> Bool
     private let onSubstitution: (Substitution, UUID) -> Void
     private var timer: Timer?
     private var run: Task<Void, Never>?
@@ -25,11 +27,13 @@ final class TeacherScheduler {
     private let log = Logger(subsystem: "app.sotto.desktop", category: "teacher")
 
     init(library: ModelLibrary, clips: ClipStore, settings: @escaping () -> AppSettings,
-         isDictating: @escaping () -> Bool, onSubstitution: @escaping (Substitution, UUID) -> Void) {
+         isDictating: @escaping () -> Bool, isComparing: @escaping () -> Bool,
+         onSubstitution: @escaping (Substitution, UUID) -> Void) {
         self.library = library
         self.clips = clips
         self.settings = settings
         self.isDictating = isDictating
+        self.isComparing = isComparing
         self.onSubstitution = onSubstitution
     }
 
@@ -72,6 +76,7 @@ final class TeacherScheduler {
         settings().teacherModel == teacher
             && teacher != library.typingModel
             && !isDictating()
+            && !isComparing()
             && TeacherQueue.isIdle(lastDictation: lastDictation, now: Date())
             && !TeacherQueue.pending(clips.records, teacher: teacher, skipping: skipped).isEmpty
             && Self.onMainsPower()
@@ -108,7 +113,7 @@ final class TeacherScheduler {
         }
     }
 
-    /// Nil once a dictation started, the power was unplugged, the teacher changed, or no clips are left.
+    /// Nil once a dictation started, Compare started, the power was unplugged, the teacher changed, or no clips are left.
     private func nextClip(for teacher: SpeechModelID) -> ClipRecord? {
         guard mayContinue(with: teacher) else { return nil }
         return TeacherQueue.pending(clips.records, teacher: teacher, skipping: skipped).first

@@ -53,6 +53,7 @@ final class AppModel {
     private let indicator = IndicatorPanel()
     private let menu = MenuBarController()
     private var settingsWindowController: SettingsWindowController?
+    private var compareWindowController: CompareWindowController?
     private var captured: FocusSnapshot?
     private var capturedDomain: String?
     private(set) var engineRunning = false
@@ -82,6 +83,7 @@ final class AppModel {
             library: library, clips: clips,
             settings: { [unowned self] in self.settings },
             isDictating: { [unowned self] in self.listening || self.takes.isCommitting },
+            isComparing: { [unowned self] in self.compareWindowController?.isComparing ?? false },
             onSubstitution: { [weak self] substitution, clipID in
                 self?.recordLearning(substitution, source: .teacher, clipID: clipID)
             })
@@ -475,6 +477,21 @@ final class AppModel {
         settingsWindowController?.show(pane: pane)
     }
 
+    var isSettingsOpen: Bool { settingsWindowController?.isOpen ?? false }
+    var isCompareOpen: Bool { compareWindowController?.isOpen ?? false }
+
+    func openCompare() {
+        if compareWindowController == nil {
+            let runner = CompareRunner(
+                library: library, clips: clips,
+                hints: { [unowned self] in self.lexicon.hintTerms },
+                isDictating: { [unowned self] in self.listening || self.takes.isCommitting })
+            compareWindowController = CompareWindowController(model: self, runner: runner)
+        }
+        library.refreshDownloadStates()
+        compareWindowController?.show()
+    }
+
     private func apply(_ event: HoldTracker.Event) {
         switch event {
         case .startHold, .startLocked:
@@ -523,6 +540,7 @@ final class AppModel {
 
     private func beginTake(_ take: TakeLedger.ID) {
         teacher?.noteDictation()
+        compareWindowController?.stopPlayback()
         if let previous = postRollTake {
             parkedSamples[previous] = capture.endUtterance()
             postRollTake = nil

@@ -37,4 +37,18 @@ final class ClipRecordTests: XCTestCase {
         XCTAssertEqual(score[.parakeetUltra], ModelScore(right: 2, judged: 2))
         XCTAssertEqual(score[.parakeetV2], ModelScore(right: 0, judged: 2))
     }
+
+    func testTallyCountsModelsMatchingThePick() {
+        var a = record()
+        a.modelTexts = ["parakeetV2": "Hey, my G.", "parakeetUltra": "hey my g", "cohere": "Hey Madgie."]
+        a.pickedModel = .parakeetV2
+        let before = CompareScore.tally([a])
+        XCTAssertEqual(before[.parakeetV2], ModelScore(right: 1, judged: 1))
+        XCTAssertEqual(before[.parakeetUltra], ModelScore(right: 1, judged: 1))
+        XCTAssertEqual(before[.cohere], ModelScore(right: 0, judged: 1))
+
+        // A model run after the pick that matches it is right too.
+        a.modelTexts["phonon2"] = "Hey my G"
+        XCTAssertEqual(CompareScore.tally([a])[.phonon2], ModelScore(right: 1, judged: 1))
+    }
 }
