@@ -85,8 +85,10 @@ struct SettingsView: View {
     @ViewBuilder
     private var detail: some View {
         switch selectedPane {
-        case .general, .privacy:
-            Form {}.formStyle(.grouped)
+        case .general:
+            GeneralSettingsPane(model: model)
+        case .privacy:
+            PrivacySettingsPane(model: model)
         case .shortcut:
             ShortcutSettingsPane(model: model)
         case .indicator:

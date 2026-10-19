@@ -1,7 +1,79 @@
 import AppKit
 import KeyboardShortcuts
+import ServiceManagement
 import SottoCore
 import SwiftUI
+
+struct GeneralSettingsPane: View {
+    var model: AppModel
+    @State private var loginError: String?
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Open Sotto at login", isOn: Binding(
+                    get: { model.openAtLogin },
+                    set: { loginError = model.setOpenAtLogin($0) }
+                ))
+                if let loginError {
+                    Text(loginError)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if model.loginRequiresApproval {
+                    Text("Approve Sotto in System Settings → General → Login Items")
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Open Login Items") {
+                        SMAppService.openSystemSettingsLoginItems()
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { model.refreshLoginItem() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshLoginItem()
+        }
+    }
+}
+
+struct PrivacySettingsPane: View {
+    var model: AppModel
+
+    var body: some View {
+        Form {
+            Section {
+                permissionRow("Microphone", allowed: model.microphoneOn) {
+                    model.requestMicrophoneAccess()
+                }
+                permissionRow("Accessibility", allowed: model.accessibilityOn) {
+                    model.requestAccessibility()
+                }
+            }
+            Section {
+                Text("Audio is never saved, and nothing leaves this Mac except the speech model download.")
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { model.refreshPermissions() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshPermissions()
+        }
+    }
+
+    private func permissionRow(_ title: String, allowed: Bool, action: @escaping () -> Void) -> some View {
+        LabeledContent(title) {
+            if allowed {
+                Text("Allowed").foregroundStyle(.green)
+            } else {
+                Button("Turn On", action: action)
+                    .accessibilityLabel("Turn On \(title)")
+            }
+        }
+    }
+}
 
 struct ShortcutSettingsPane: View {
     var model: AppModel
@@ -39,6 +111,17 @@ struct MicrophoneSettingsPane: View {
                 .pickerStyle(.menu)
             }
             Section {
+                ProgressView(value: model.engineRunning ? Double(model.inputLevel) : 0, total: 1) {
+                    Text("Input level")
+                }
+                .progressViewStyle(.linear)
+                if !model.engineRunning {
+                    Text("Shows while the microphone is open")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section {
                 Toggle("Keep the first syllable", isOn: syllableSelection)
                 Text("A short buffer stays in memory and is overwritten. Audio is not written to disk.")
                     .foregroundStyle(.secondary)
@@ -46,7 +129,11 @@ struct MicrophoneSettingsPane: View {
             }
         }
         .formStyle(.grouped)
-        .onAppear { model.refreshMicrophones() }
+        .onAppear {
+            model.refreshMicrophones()
+            model.setLevelWatching(true, for: .meter)
+        }
+        .onDisappear { model.setLevelWatching(false, for: .meter) }
     }
 
     private var microphoneSelection: Binding<UInt32?> {

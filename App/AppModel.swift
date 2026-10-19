@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import CoreAudio
 import KeyboardShortcuts
+import ServiceManagement
 import SottoCore
 import SwiftUI
 import os
@@ -21,6 +22,8 @@ final class AppModel {
     var inputLevel: Float = 0
     var accessibilityOn = false
     var microphoneOn = false
+    private(set) var openAtLogin = SMAppService.mainApp.status == .enabled
+    private(set) var loginRequiresApproval = SMAppService.mainApp.status == .requiresApproval
     var microphones: [InputDevice] = []
     var lastTranscript = ""
 
@@ -44,7 +47,7 @@ final class AppModel {
     private var settingsWindowController: SettingsWindowController?
     private var captured: FocusSnapshot?
     private var capturedDomain: String?
-    private var engineRunning = false
+    private(set) var engineRunning = false
     private var tapOn = false
     private var promptedForHotkey = false
     private var presentingPermission = false
@@ -128,6 +131,37 @@ final class AppModel {
         microphoneOn = Permissions.microphoneGranted()
     }
 
+    func refreshLoginItem() {
+        let status = SMAppService.mainApp.status
+        openAtLogin = status == .enabled
+        loginRequiresApproval = status == .requiresApproval
+    }
+
+    func setOpenAtLogin(_ on: Bool) -> String? {
+        defer { refreshLoginItem() }
+        do {
+            if on {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    func requestMicrophoneAccess() {
+        if AVAudioApplication.shared.recordPermission == .undetermined {
+            Task {
+                _ = await Permissions.requestMicrophone()
+                refreshPermissions()
+            }
+        } else {
+            Permissions.openMicrophoneSettings()
+        }
+    }
+
     func syncHotkeySource() {
         refreshPermissions()
         maintainTap()
@@ -140,7 +174,7 @@ final class AppModel {
     /// `activate()` does not take focus while another app is in front, so the prompt never appears.
     private func presentHotkeyPermission() {
         presentingPermission = true
-        openSettings(pane: .shortcut)
+        openSettings(pane: .privacy)
         NSApp.activate(ignoringOtherApps: true)
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
