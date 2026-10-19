@@ -7,6 +7,7 @@ import SottoCore
 enum InsertResult: Equatable, Sendable {
     case inserted
     case kept(TakeProblem)
+    case cancelled
 }
 
 @MainActor
@@ -31,10 +32,13 @@ final class TextInserter {
                              selectedTextSettable: canSet, isSecureField: secure, secureInput: secureInput)
     }
 
-    func insert(_ text: String, captured: FocusSnapshot) async -> InsertResult {
+    func insert(_ text: String, captured: FocusSnapshot,
+                isAllowed: () -> Bool = { true }) async -> InsertResult {
+        guard isAllowed() else { return .cancelled }
         // Recheck after each suspension: another caller may have borrowed the clipboard meanwhile.
         while let task = clipboardRestoreTask {
             await task.value
+            guard isAllowed() else { return .cancelled }
         }
         let element = focusedElement()
         let nowPID = element.flatMap { processID($0) } ?? 0

@@ -56,9 +56,9 @@ final class AppModel {
     private var rightCommandDown = false
     private var hotkeyTicks = 0
     private var locked = false
-    private var liveGeneration = 0
-    private var postRollID: UUID?
-    private var parkedSamples: [Float]?
+    private var takes = TakeLedger()
+    private var postRollTake: TakeLedger.ID?
+    private var parkedSamples: [TakeLedger.ID: [Float]] = [:]
     private let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     init() {
@@ -290,11 +290,13 @@ final class AppModel {
     }
 
     func applyEscape() {
-        apply(hold.escape())
+        let event = hold.escape()
+        apply(event == .ignore && takes.isPending ? .cancel : event)
     }
 
     func applyChord() {
-        apply(hold.chordKey())
+        let event = hold.chordKey()
+        apply(event == .ignore && takes.isPending ? .cancel : event)
     }
 
     func copyLastTranscript() {
@@ -378,6 +380,7 @@ final class AppModel {
     private func apply(_ event: HoldTracker.Event) {
         switch event {
         case .startHold, .startLocked:
+            let take = takes.begin()
             listening = true
             locked = event == .startLocked
             guard Permissions.microphoneGranted() else {
@@ -386,45 +389,51 @@ final class AppModel {
                 _ = hold.escape()
                 microphoneOn = false
                 indicator.show(.problem(.microphoneOff))
+                takes.complete(take)
                 return
             }
-            beginTake()
+            beginTake(take)
         case .finish:
+            guard let take = takes.finish() else { return }
             listening = false
             locked = false
             indicator.show(.working)
             let snapshot = captured
             let domain = capturedDomain
-            let generation = liveGeneration
-            Task { await commit(snapshot: snapshot, domain: domain, generation: generation) }
+            // Assign audio ownership before the task can be delayed by another take.
+            postRollTake = take
+            Task { await commit(snapshot: snapshot, domain: domain, take: take) }
         case .cancel:
+            guard let take = takes.cancel() else { return }
             listening = false
             locked = false
-            if postRollID != nil {
-                parkedSamples = capture.endUtterance()
-                postRollID = nil
-            } else {
-                capture.cancelUtterance()
+            if postRollTake == take { postRollTake = nil }
+            parkedSamples.removeValue(forKey: take)
+            capture.cancelUtterance()
+            if !settings.keepFirstSyllable {
+                capture.stopEngine()
+                engineRunning = false
             }
-            liveGeneration += 1
-            live.cancel()
+            live.cancel(take)
             indicator.show(.cancelled)
         case .ignore:
             break
         }
     }
 
-    private func beginTake() {
-        if postRollID != nil {
-            parkedSamples = capture.endUtterance()
-            postRollID = nil
+    private func beginTake(_ take: TakeLedger.ID) {
+        if let previous = postRollTake {
+            parkedSamples[previous] = capture.endUtterance()
+            postRollTake = nil
         }
         if !engineRunning { startEngine() }
         captured = inserter.captureFocus()
         capturedDomain = inserter.lastDomain
         capture.beginUtterance()
-        liveGeneration += 1
-        Task { await live.start() }
+        Task {
+            guard takes.isCurrent(take) else { return }
+            await live.start(take)
+        }
         setLevelWatching(true, for: .indicator)
         indicator.show(.listening(handsFree: locked))
     }
@@ -434,41 +443,45 @@ final class AppModel {
         indicator.setWords(text)
     }
 
-    private func commit(snapshot: FocusSnapshot?, domain: String?, generation: Int) async {
-        let started = Date()
-        let roll = UUID()
-        postRollID = roll
-        try? await Task.sleep(nanoseconds: 60_000_000)
-        let samples: [Float]
-        if postRollID == roll {
-            samples = capture.endUtterance()
-            postRollID = nil
-        } else {
-            samples = parkedSamples ?? []
-            parkedSamples = nil
+    private func commit(snapshot: FocusSnapshot?, domain: String?, take: TakeLedger.ID) async {
+        defer {
+            takes.complete(take)
+            parkedSamples.removeValue(forKey: take)
         }
-        if !settings.keepFirstSyllable, !listening {
+        let started = Date()
+        try? await Task.sleep(nanoseconds: 60_000_000)
+        guard takes.allowsInsertion(take) else { return }
+        let samples: [Float]
+        if postRollTake == take {
+            samples = capture.endUtterance()
+            postRollTake = nil
+        } else {
+            samples = parkedSamples.removeValue(forKey: take) ?? []
+        }
+        if !settings.keepFirstSyllable, !listening, postRollTake == nil {
             capture.stopEngine()
             engineRunning = false
         }
         let audioEnded = Date()
 
         let transcriptTask = Task { @MainActor () -> String? in
-            guard self.modelPhase == .ready else { return nil }
+            guard self.takes.allowsInsertion(take), self.modelPhase == .ready else { return nil }
             do { return try await self.engine.transcribe(samples) }
             catch { return nil }
         }
         let appleTask = Task { @MainActor () -> String in
-            guard generation == self.liveGeneration else { return "" }
-            await self.live.finish()
-            return self.live.text
+            guard self.takes.allowsInsertion(take) else { return "" }
+            // finish returns this session's text, even if a new session starts while it waits.
+            return await self.live.finish(take)
         }
         let transcript = await transcriptTask.value
+        guard takes.allowsInsertion(take) else { return }
         let apple = await appleTask.value
+        guard takes.allowsInsertion(take) else { return }
         let transcribed = Date()
 
         if modelPhase != .ready {
-            present(.problem(.modelDownloading), generation: generation)
+            present(.problem(.modelDownloading), take: take)
             if !apple.isEmpty { lastTranscript = apple }
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
@@ -476,30 +489,36 @@ final class AppModel {
 
         let raw = transcript ?? (apple.isEmpty ? nil : apple)
         guard let raw, !raw.isEmpty else {
-            present(.problem(.notHeard), generation: generation)
+            present(.problem(.notHeard), take: take)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
         let mode = settings.modeOverride ?? AppIdentity.defaultMode(bundleID: snapshot?.bundleID, domain: domain)
         let formatted = rulebook.applying(to: TranscriptFormatter.format(raw, mode: mode))
         guard !formatted.isEmpty else {
-            present(.problem(.notHeard), generation: generation)
+            present(.problem(.notHeard), take: take)
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
 
         let result: InsertResult
+        guard takes.allowsInsertion(take) else { return }
         if let snapshot, snapshot.pid != 0 {
-            result = await inserter.insert(formatted, captured: snapshot)
+            result = await inserter.insert(formatted, captured: snapshot) { [self] in
+                takes.allowsInsertion(take)
+            }
         } else {
             result = .kept(.noTextField)
         }
+        guard takes.allowsInsertion(take) else { return }
         let injected = Date()
         switch result {
         case .inserted:
-            present(.done, generation: generation)
+            present(.done, take: take)
         case .kept(let problem):
-            present(.problem(problem), generation: generation)
+            present(.problem(problem), take: take)
+        case .cancelled:
+            return
         }
         lastTranscript = formatted
         settings.dictationCount += 1
@@ -513,8 +532,8 @@ final class AppModel {
         logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: injected)
     }
 
-    private func present(_ phase: IndicatorPhase, generation: Int) {
-        guard !listening, generation == liveGeneration else { return }
+    private func present(_ phase: IndicatorPhase, take: TakeLedger.ID) {
+        guard takes.canPresent(take) else { return }
         indicator.show(phase)
     }
 
