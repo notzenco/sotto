@@ -24,8 +24,10 @@ If you start a new take before the last one has finished, the earlier take's tex
 
 **Modes.** Sotto picks a mode from the focused app. Settings → Speech → Mode can force one.
 
-- **Prose** is used in mail, chat, browsers, Word and everything else. It drops fillers ("um", "uh"), capitalises sentences, and turns spoken punctuation into marks ("comma", "period", "question mark", "new paragraph").
+- **Prose** is used in mail, chat, browsers, Word and everything else. It drops fillers ("um", "uh"), capitalises sentences, and turns spoken punctuation into marks ("comma", "period", "question mark", "new paragraph"). One hold is one sentence: a take that ends without a closing mark gets a full stop.
 - **Literal** is used in terminals and code editors. It never rewrites. Symbol words become symbols ("dot", "slash", "underscore", "open paren"), and "word dot" types the word "dot" itself.
+
+**Back-to-back takes.** Sotto reads the few characters before the cursor and fits each take to them. It adds a space after a word or a closing mark, but not at the start of a field, after a space or new line, or after an opening bracket or quote. In Prose, a take that continues a sentence (after a word, number, comma or semicolon) starts in lowercase, unless its first word is "I", an acronym, one of your spellings, or a name. In fields that hide their text, Sotto assumes you're continuing when its last take went into the same field less than 3 minutes earlier. Terminals always use that fallback.
 
 **Names.** Settings → Dictionary → Names maps what Sotto heard to how you spell it. A deleted spelling is remembered as deleted, so the same phrase can't be added again.
 
@@ -103,14 +105,14 @@ Until Accessibility is on, Sotto opens its Settings window on Privacy & Permissi
 2. **Capture.** `AudioCapture` taps the microphone in the hardware's own format and resamples it to 16 kHz mono. With "Keep the first syllable" on, the engine stays running and keeps the last 300 ms in an in-memory ring. That way the start of a word spoken as you press the key is not lost.
 3. **Live line.** `LiveLine` feeds the same audio to Apple's `SpeechAnalyzer`. Its provisional words appear only in the indicator's caption while listening, when "Show words as you talk" is on.
 4. **Transcription.** On release, the whole take goes to Parakeet (`ParakeetEngine`). If Parakeet returns no transcript, Apple's live text is used instead. Until the model is ready, available live text is kept for Copy Last and is not inserted. The indicator says "Still downloading the speech model".
-5. **Formatting.** `TranscriptFormatter` applies Prose or Literal rules, then `Rulebook` applies your spellings.
+5. **Formatting.** `TranscriptFormatter` applies Prose or Literal rules, then `Rulebook` applies your spellings. `InsertJoin` fits the result to the text before the cursor, which `TextInserter` reads through Accessibility.
 6. **Insertion.** `InsertPlanner` picks Accessibility, paste, typing or refusal for the focused app, and `TextInserter` carries it out. The indicator shows a tick on success or a problem message if the text could not be inserted.
 
 ### Layout
 
 | Path | Contents |
 |---|---|
-| `Core/` | `SottoCore`, a static library of pure logic: hold timing, modes and app classes, formatting, spellings, insert routing, the pre-roll ring, indicator settings, states, layout, bars and level smoothing. |
+| `Core/` | `SottoCore`, a static library of pure logic: hold timing, modes and app classes, formatting, spellings, joining takes to the text before the cursor, insert routing, the pre-roll ring, indicator settings, states, layout, bars and level smoothing. |
 | `Tests/` | Unit tests for `SottoCore`. |
 | `App/` | The menu-bar app: audio, speech engines, hotkey, text insertion, menus and storage. |
 | `App/Indicator/` | Indicator views, panel and text cursor lookup. |
