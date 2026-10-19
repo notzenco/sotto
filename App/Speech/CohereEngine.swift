@@ -1,5 +1,6 @@
 import FluidAudio
 import Foundation
+import OSLog
 import SottoCore
 
 /// Cohere Transcribe: the large, accurate model used as the teacher and as a Compare candidate.
@@ -13,6 +14,7 @@ actor CohereEngine: SpeechEngine {
     private static let decoderVariant = CoherePipeline.DecoderVariant.v2
     private static let downloadVariant = "v2"
 
+    private let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
     private var loaded: Loaded?
     private var preparation: Task<Loaded, any Error>?
 
@@ -64,6 +66,11 @@ actor CohereEngine: SpeechEngine {
         do {
             let result = try await loaded.pipeline.transcribeLong(
                 audio: samples, models: loaded.models, language: .english)
+            // A capped window dropped its tail; the teacher would align the missing words as wrong ones.
+            guard result.cappedWindows == 0 else {
+                log.notice("cohere result capped in \(result.cappedWindows, privacy: .public) window(s); clip skipped")
+                return nil
+            }
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
             return text.isEmpty ? nil : EngineResult(raw: text, hinted: text)
         } catch CohereAsrError.invalidInput {
