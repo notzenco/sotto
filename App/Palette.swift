@@ -7,10 +7,6 @@ enum Palette {
     static let inkDark = NSColor(srgbRed: 0xE8 / 255, green: 0xE1 / 255, blue: 0xD6 / 255, alpha: 1)
     static let graphiteLight = NSColor(srgbRed: 0x6B / 255, green: 0x64 / 255, blue: 0x5A / 255, alpha: 1)
     static let graphiteDark = NSColor(srgbRed: 0xA3 / 255, green: 0x9B / 255, blue: 0x90 / 255, alpha: 1)
-    static let hairlineLight = NSColor(srgbRed: 0xE4 / 255, green: 0xDC / 255, blue: 0xD0 / 255, alpha: 1)
-    static let hairlineDark = NSColor(srgbRed: 0x2C / 255, green: 0x28 / 255, blue: 0x23 / 255, alpha: 1)
-    static let oxideLight = NSColor(srgbRed: 0x8E / 255, green: 0x3D / 255, blue: 0x32 / 255, alpha: 1)
-    static let oxideDark = NSColor(srgbRed: 0xD4 / 255, green: 0x78 / 255, blue: 0x64 / 255, alpha: 1)
 
     static var dark: Bool {
         NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -19,14 +15,6 @@ enum Palette {
     static var paper: NSColor { dark ? paperDark : paperLight }
     static var ink: NSColor { dark ? inkDark : inkLight }
     static var graphite: NSColor { dark ? graphiteDark : graphiteLight }
-    static var hairline: NSColor { dark ? hairlineDark : hairlineLight }
-    static var oxide: NSColor { dark ? oxideDark : oxideLight }
-
-    static func newYork(size: CGFloat) -> NSFont {
-        NSFont(name: "NewYork-Regular", size: size)
-            ?? NSFont(name: "NewYorkMedium-Regular", size: size)
-            ?? NSFont.systemFont(ofSize: size)
-    }
 }
 
 enum MenuIcon {

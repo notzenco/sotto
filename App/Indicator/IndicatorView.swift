@@ -21,6 +21,7 @@ extension RGBColor {
 
 struct IndicatorView: View {
     let state: IndicatorState
+    var placement: IndicatorPlacement? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -29,22 +30,26 @@ struct IndicatorView: View {
             EmptyView()
         default:
             Group {
-                switch state.settings.style {
-                case .pill:
-                    VStack(spacing: IndicatorLayout.captionGap) {
-                        if state.settings.position != .top { captionContent }
-                        bodyContent
-                        if state.settings.position == .top { captionContent }
-                    }
-                case .notch:
-                    VStack(spacing: IndicatorLayout.captionGap) {
-                        bodyContent
-                        captionContent
-                    }
-                case .dot:
-                    HStack(spacing: IndicatorLayout.captionGap) {
-                        bodyContent
-                        captionContent
+                if let placement {
+                    placedContent(placement)
+                } else {
+                    switch state.settings.style {
+                    case .pill:
+                        VStack(spacing: IndicatorLayout.captionGap) {
+                            if state.settings.position != .top { captionContent }
+                            bodyContent
+                            if state.settings.position == .top { captionContent }
+                        }
+                    case .notch:
+                        VStack(spacing: IndicatorLayout.captionGap) {
+                            bodyContent
+                            captionContent
+                        }
+                    case .dot:
+                        HStack(spacing: IndicatorLayout.captionGap) {
+                            bodyContent
+                            captionContent
+                        }
                     }
                 }
             }
@@ -52,6 +57,22 @@ struct IndicatorView: View {
             .accessibilityLabel(accessibilityText)
             .allowsHitTesting(false)
         }
+    }
+
+    private func placedContent(_ placement: IndicatorPlacement) -> some View {
+        let bounds = placement.caption.map { placement.body.union($0) } ?? placement.body
+        return ZStack(alignment: .topLeading) {
+            // Placement uses AppKit's bottom-left origin; SwiftUI uses top-left.
+            bodyContent
+                .frame(width: placement.body.width, height: placement.body.height)
+                .position(x: placement.body.midX, y: bounds.height - placement.body.midY)
+            if let caption = placement.caption {
+                captionContent
+                    .frame(width: caption.width, height: caption.height)
+                    .position(x: caption.midX, y: bounds.height - caption.midY)
+            }
+        }
+        .frame(width: bounds.width, height: bounds.height)
     }
 
     // Kept separate so the panel can position a caption independently when

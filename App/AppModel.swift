@@ -39,7 +39,7 @@ final class AppModel {
     private let live = LiveLine()
     private let inserter = TextInserter()
     private let hotkeys = HotkeyMonitor()
-    private let slip = SlipPanel()
+    private let indicator = IndicatorPanel()
     private let menu = MenuBarController()
     private var settingsWindow: NSWindow?
     private var closeObserver: NSObjectProtocol?
@@ -63,6 +63,10 @@ final class AppModel {
         settings = LocalStore.loadSettings()
         rulebook = LocalStore.loadRulebook()
         history = LocalStore.loadHistory()
+        indicator.apply(settings.indicator)
+        indicator.onHide = { [weak self] in
+            self?.setLevelWatching(false, for: .indicator)
+        }
     }
 
     func installInterface() {
@@ -75,7 +79,11 @@ final class AppModel {
             box.value.accept(buffer)
         }
         capture.onLevel = { level in
-            Task { @MainActor in AppDelegateBridge.model?.inputLevel = level }
+            Task { @MainActor in
+                guard let model = AppDelegateBridge.model else { return }
+                model.inputLevel = level
+                model.indicator.setLevel(level)
+            }
         }
         live.onChange = { [weak self] text in
             self?.provisional(text)
@@ -303,6 +311,12 @@ final class AppModel {
         LocalStore.save(settings: settings)
     }
 
+    func setIndicator(_ value: IndicatorSettings) {
+        settings.indicator = value
+        LocalStore.save(settings: settings)
+        indicator.apply(value)
+    }
+
     func selectMicrophone(_ id: UInt32?) {
         settings.inputDeviceID = id
         LocalStore.save(settings: settings)
@@ -359,14 +373,14 @@ final class AppModel {
                 locked = false
                 _ = hold.escape()
                 microphoneOn = false
-                slip.showResult(text: "", failure: "Turn on Microphone")
-                slip.hide(after: 4)
+                indicator.show(.problem(.microphoneOff))
                 return
             }
             beginTake()
         case .finish:
             listening = false
             locked = false
+            indicator.show(.working)
             let snapshot = captured
             let domain = capturedDomain
             let generation = liveGeneration
@@ -382,7 +396,7 @@ final class AppModel {
             }
             liveGeneration += 1
             live.cancel()
-            slip.hideNow()
+            indicator.show(.cancelled)
         case .ignore:
             break
         }
@@ -399,12 +413,13 @@ final class AppModel {
         capture.beginUtterance()
         liveGeneration += 1
         Task { await live.start() }
-        slip.showListening(word: settings.dictationCount < 3, provisional: "")
+        setLevelWatching(true, for: .indicator)
+        indicator.show(.listening(handsFree: locked))
     }
 
     private func provisional(_ text: String) {
         guard listening else { return }
-        slip.showListening(word: settings.dictationCount < 3 && text.isEmpty, provisional: text)
+        indicator.setWords(text)
     }
 
     private func commit(snapshot: FocusSnapshot?, domain: String?, generation: Int) async {
@@ -441,7 +456,7 @@ final class AppModel {
         let transcribed = Date()
 
         if modelPhase != .ready {
-            present(text: apple, failure: apple.isEmpty ? "model downloading" : nil, hold: 4)
+            present(.problem(.modelDownloading))
             if !apple.isEmpty { lastTranscript = apple }
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
@@ -449,14 +464,14 @@ final class AppModel {
 
         let raw = transcript ?? (apple.isEmpty ? nil : apple)
         guard let raw, !raw.isEmpty else {
-            present(text: "", failure: "not heard", hold: 4)
+            present(.problem(.notHeard))
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
         let mode = settings.modeOverride ?? AppIdentity.defaultMode(bundleID: snapshot?.bundleID, domain: domain)
         let formatted = rulebook.applying(to: TranscriptFormatter.format(raw, mode: mode))
         guard !formatted.isEmpty else {
-            present(text: "", failure: "not heard", hold: 4)
+            present(.problem(.notHeard))
             logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: Date())
             return
         }
@@ -470,9 +485,9 @@ final class AppModel {
         let injected = Date()
         switch result {
         case .inserted:
-            present(text: formatted, failure: nil, hold: 1.2)
+            present(.done)
         case .kept(let problem):
-            present(text: formatted.isEmpty ? "" : formatted, failure: problem.message, hold: 4)
+            present(.problem(problem))
         }
         lastTranscript = formatted
         settings.dictationCount += 1
@@ -486,10 +501,9 @@ final class AppModel {
         logTiming(from: started, audio: audioEnded, transcribed: transcribed, injected: injected)
     }
 
-    private func present(text: String, failure: String?, hold: TimeInterval) {
+    private func present(_ phase: IndicatorPhase) {
         guard !listening else { return }
-        slip.showResult(text: text, failure: failure)
-        slip.hide(after: hold)
+        indicator.show(phase)
     }
 
     private func logTiming(from started: Date, audio: Date, transcribed: Date, injected: Date) {

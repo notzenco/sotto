@@ -24,11 +24,12 @@
 		86204792EA840D6325133A32 /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5739DF1027512112F7341E /* AppIdentity.swift */; };
 		8BBECFBABF54EE036EF9B0C1 /* libSottoCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3F6DE0D49F84C5997837AD5B /* libSottoCore.a */; };
 		8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FE419E15D6C5EB42A0D6D49 /* HotkeyMonitor.swift */; };
-		8DDA517C12FE1DDD08B30AE3 /* SlipPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E3829613732674FD366358 /* SlipPanel.swift */; };
 		96EC04C973AD8D60B5F04E5D /* DictationMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7D348ACDDD1E00CFB8160D3 /* DictationMode.swift */; };
+		9ED6EB01579F5DD0F43475E5 /* IndicatorPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE61DCB226B0C65E163CAA33 /* IndicatorPanel.swift */; };
 		A2CE2F4CE4B246B38401A9EB /* TextInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA740A9B9A7B3FE44E22634 /* TextInserter.swift */; };
 		ABD11B9B0E8A8B41099C413E /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E92379DF801F9A016518C4A /* Permissions.swift */; };
 		B5EA9879D19BB7665AAB89E8 /* libSottoCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3F6DE0D49F84C5997837AD5B /* libSottoCore.a */; };
+		B8EA527806C11142C8E7889B /* CaretLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A6CE8CD612CCFE652F344C /* CaretLocator.swift */; };
 		B949D42AB2779695D3E22A54 /* LevelMeterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */; };
 		BE45AEA6BE38E885A99C55AA /* IndicatorBarsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32E03B5BCB98F26F4092A741 /* IndicatorBarsTests.swift */; };
 		C084A5CBA85C6FC0A05585BB /* IndicatorLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */; };
@@ -91,15 +92,16 @@
 		A1AFEEAA4135B21CE61AF91D /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		A2A4CDE6531DDDA4BF1193E1 /* ParakeetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetEngine.swift; sourceTree = "<group>"; };
 		ACCA2280C903BE0993FC595D /* IndicatorLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorLayoutTests.swift; sourceTree = "<group>"; };
+		AE61DCB226B0C65E163CAA33 /* IndicatorPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorPanel.swift; sourceTree = "<group>"; };
 		B28035B2F64D20BFBB7C8BE7 /* HoldTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoldTracker.swift; sourceTree = "<group>"; };
 		BF82C7764642BCB684DCED3A /* LevelMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelMeter.swift; sourceTree = "<group>"; };
+		C0A6CE8CD612CCFE652F344C /* CaretLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaretLocator.swift; sourceTree = "<group>"; };
 		C1B25E6714CF4F0556E5527F /* SottoCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SottoCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7C2508B8790AD269BF0850E /* IndicatorLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorLayout.swift; sourceTree = "<group>"; };
 		CB1AC3A3F36B48F542D76655 /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
 		D0EF5C4D1F51EE05079F665F /* IndicatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorTests.swift; sourceTree = "<group>"; };
 		D92F56757B510A190839C4BB /* InsertPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertPlanner.swift; sourceTree = "<group>"; };
 		E0074DE2D414298885D2E37C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
-		E7E3829613732674FD366358 /* SlipPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlipPanel.swift; sourceTree = "<group>"; };
 		E8F34A4342906DE3C694E5CC /* LevelMeterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelMeterTests.swift; sourceTree = "<group>"; };
 		F7D348ACDDD1E00CFB8160D3 /* DictationMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationMode.swift; sourceTree = "<group>"; };
 		FA59C0C65E31DFD24ABA51B2 /* Sotto.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sotto.entitlements; sourceTree = "<group>"; };
@@ -173,6 +175,8 @@
 		6CF0D05FEBDE687CEFEC2A19 /* Indicator */ = {
 			isa = PBXGroup;
 			children = (
+				C0A6CE8CD612CCFE652F344C /* CaretLocator.swift */,
+				AE61DCB226B0C65E163CAA33 /* IndicatorPanel.swift */,
 				0FCA0A63EF32581C15E8D13F /* IndicatorView.swift */,
 			);
 			path = Indicator;
@@ -201,7 +205,6 @@
 				9E92379DF801F9A016518C4A /* Permissions.swift */,
 				15E2029300C2FDA49EBB9130 /* SettingsView.swift */,
 				2972BAE3073E24FE76A2C05F /* Shortcuts.swift */,
-				E7E3829613732674FD366358 /* SlipPanel.swift */,
 				FA59C0C65E31DFD24ABA51B2 /* Sotto.entitlements */,
 				15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */,
 				5BC51D3A5933645C7B14C2D9 /* Stores.swift */,
@@ -346,7 +349,9 @@
 			files = (
 				32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */,
 				6BA0AA7A68B35E9A7996B2C4 /* AudioCapture.swift in Sources */,
+				B8EA527806C11142C8E7889B /* CaretLocator.swift in Sources */,
 				8C1F25AF315D6F472638353C /* HotkeyMonitor.swift in Sources */,
+				9ED6EB01579F5DD0F43475E5 /* IndicatorPanel.swift in Sources */,
 				E2203C8C118A67B37BF1B7EA /* IndicatorView.swift in Sources */,
 				F63FAD9095740CCE88CC4DC8 /* LiveLine.swift in Sources */,
 				71374BD8199107BE4905ABA2 /* MenuBarController.swift in Sources */,
@@ -355,7 +360,6 @@
 				ABD11B9B0E8A8B41099C413E /* Permissions.swift in Sources */,
 				1F734B57375AE21C3F34DAC4 /* SettingsView.swift in Sources */,
 				42A582125F7EA187A16962E3 /* Shortcuts.swift in Sources */,
-				8DDA517C12FE1DDD08B30AE3 /* SlipPanel.swift in Sources */,
 				1C5346D389F5F7EF42676B92 /* SottoApp.swift in Sources */,
 				E5F8DB2356A832E04C3C6EBD /* Stores.swift in Sources */,
 				A2CE2F4CE4B246B38401A9EB /* TextInserter.swift in Sources */,
