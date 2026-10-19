@@ -24,6 +24,11 @@ final class CompareRunner {
     private(set) var done = 0
     /// Pairs still waiting, counted before each clip.
     private(set) var remaining = 0
+    /// Called when the runner sees a dictation, so playback stops before the microphone hears it.
+    @ObservationIgnored var onDictation: () -> Void = {}
+
+    /// True from `start` until the run ends, including while it waits out a dictation.
+    var isActive: Bool { run != nil }
 
     @ObservationIgnored private let library: ModelLibrary
     @ObservationIgnored private let clips: ClipStore
@@ -78,6 +83,7 @@ final class CompareRunner {
     private func runAll() async {
         while !stopped {
             if isDictating() {
+                onDictation()
                 phase = .waitingForDictation
                 try? await Task.sleep(for: .seconds(1))
                 continue
@@ -121,15 +127,19 @@ final class CompareRunner {
 
     /// Nil once the window closed, a dictation started, or the model has no clips left.
     private func nextClip(for model: SpeechModelID) -> ClipRecord? {
-        guard !stopped, !isDictating() else { return nil }
+        guard !stopped else { return nil }
+        if isDictating() {
+            onDictation()
+            return nil
+        }
         remaining = pendingCount()
         // Newest first, matching the list.
         return clips.records.last { isPending($0, model) }
     }
 
-    /// The typing model first, since it's already loaded, then the catalog's order.
+    /// The catalog's order, with the typing model last so dictation's engine stays free as long as possible.
     private func nextModel() -> SpeechModelID? {
-        let order = [library.typingModel] + SpeechCatalog.all.map(\.id).filter { $0 != library.typingModel }
+        let order = SpeechCatalog.all.map(\.id).filter { $0 != library.typingModel } + [library.typingModel]
         return order.first { model in
             runnable(model) && clips.records.contains { isPending($0, model) }
         }
@@ -153,9 +163,10 @@ final class CompareRunner {
 }
 
 extension ClipRecord {
-    /// The model's version of this clip. The clip's typing model has its text in `rawText`.
+    /// The model's version of this clip. The clip's typing model has its text in `hintedText`, which is what
+    /// the owner got.
     func compareText(for model: SpeechModelID) -> String? {
         if let text = modelTexts[model.rawValue] { return text }
-        return model == typingModel && !rawText.isEmpty ? rawText : nil
+        return model == typingModel && !hintedText.isEmpty ? hintedText : nil
     }
 }

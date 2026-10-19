@@ -10,6 +10,8 @@ final class ClipPlayer: NSObject, AVAudioPlayerDelegate {
     private(set) var playing: UUID?
 
     @ObservationIgnored private var player: AVAudioPlayer?
+    /// The latest play request. A load whose request was replaced or stopped plays nothing.
+    @ObservationIgnored private var request = UUID()
 
     /// Plays the clip, or stops it if it's the one playing.
     func toggle(_ id: UUID, clips: ClipStore) {
@@ -19,10 +21,10 @@ final class ClipPlayer: NSObject, AVAudioPlayerDelegate {
         }
         stop()
         playing = id
+        let token = request
         Task {
             let samples = await clips.loadSamples(for: id)
-            // Another clip, or Stop, may have come first.
-            guard playing == id else { return }
+            guard request == token else { return }
             guard let samples, !samples.isEmpty,
                   let player = try? AVAudioPlayer(data: Self.wav(samples)) else {
                 playing = nil
@@ -35,6 +37,7 @@ final class ClipPlayer: NSObject, AVAudioPlayerDelegate {
     }
 
     func stop() {
+        request = UUID()
         player?.stop()
         player = nil
         playing = nil

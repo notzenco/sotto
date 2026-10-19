@@ -3,11 +3,12 @@ import SottoCore
 import SwiftUI
 
 /// Kept clips newest first, each with every downloaded model's version. Clicking a version, or typing the right
-/// text, saves the pick, keeps score and teaches Sotto the words the typing model got wrong.
+/// text, saves the pick and keeps score; `ComparePicks` learns from the final choices when the window closes.
 struct CompareView: View {
     var model: AppModel
     var runner: CompareRunner
     var player: ClipPlayer
+    var picks: ComparePicks
     /// Rebuilt only when the clips or download states change, never on a progress tick.
     @State private var rows: [CompareRow] = []
     @State private var scores: [CompareScoreItem] = []
@@ -30,8 +31,8 @@ struct CompareView: View {
                                 row: row,
                                 isPlaying: player.playing == row.id,
                                 play: { player.toggle(row.id, clips: model.clips) },
-                                pick: { pick($0, clip: row.id) },
-                                correct: { correct($0, clip: row.id) }
+                                pick: { picks.pick($0, clip: row.id) },
+                                correct: { picks.correct($0, clip: row.id) }
                             )
                         }
                     }
@@ -61,36 +62,6 @@ struct CompareView: View {
             guard score != nil || downloaded.contains(info.id) else { return nil }
             return CompareScoreItem(id: info.id, name: info.name,
                                     right: score?.right ?? 0, judged: score?.judged ?? 0)
-        }
-    }
-
-    private func pick(_ id: SpeechModelID, clip: UUID) {
-        guard var record = model.clips.records.first(where: { $0.id == clip }), record.pickedModel != id,
-              let text = record.compareText(for: id) else { return }
-        record.pickedModel = id
-        record.correctedText = nil
-        save(record, chosen: text)
-    }
-
-    private func correct(_ typed: String, clip: UUID) {
-        let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, var record = model.clips.records.first(where: { $0.id == clip }),
-              record.correctedText != text else { return }
-        record.correctedText = text
-        record.pickedModel = nil
-        save(record, chosen: text)
-    }
-
-    /// Learns each phrase the typing model heard differently from the chosen text.
-    private func save(_ record: ClipRecord, chosen: String) {
-        var record = record
-        // So the typing model is scored like the others.
-        if record.modelTexts[record.typingModel.rawValue] == nil, !record.rawText.isEmpty {
-            record.modelTexts[record.typingModel.rawValue] = record.rawText
-        }
-        model.clips.update(record)
-        for substitution in PhraseAligner.substitutions(from: record.rawText, to: chosen) {
-            model.recordLearning(substitution, source: .compare, clipID: record.id)
         }
     }
 }
@@ -172,7 +143,7 @@ private struct CompareHeader: View {
                     }
                 }
             }
-            Text("Click the version that matches what you said.")
+            Text("Click the version that matches what you said. Sotto learns from your choices when you close this window.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -226,6 +197,7 @@ private struct ClipCard: View {
                     .foregroundStyle(.secondary)
             }
             ForEach(row.versions) { version in
+                // Clicking the picked version again clears the pick.
                 Button { pick(version.id) } label: {
                     choice(title: version.name, text: version.text ?? "Waiting to run…",
                            chosen: version.picked, waiting: version.text == nil)
@@ -240,6 +212,12 @@ private struct ClipCard: View {
                         .onSubmit(save)
                     Button("Save", action: save)
                         .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    if row.correctedText != nil {
+                        Button("Remove") {
+                            correct("")
+                            editing = false
+                        }
+                    }
                     Button("Cancel") { editing = false }
                 }
             } else {

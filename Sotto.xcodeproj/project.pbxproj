@@ -14,6 +14,7 @@
 		1C5346D389F5F7EF42676B92 /* SottoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15BF88F598DE1B7B2AAE8EC5 /* SottoApp.swift */; };
 		231CDDE5AE03832A8CAB78F2 /* EngineFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9713B7DFD3531EC7590B781B /* EngineFactory.swift */; };
 		24243F453447EF048555ABDC /* PreRoll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC9DFB9E59867B138ECB963 /* PreRoll.swift */; };
+		258710AD2164EFE5F3A83425 /* ComparePicks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30957AED24B282351C327199 /* ComparePicks.swift */; };
 		293C157BCD277114BDBA49F8 /* FixWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AE681EF1024506DC3B8D42 /* FixWatcher.swift */; };
 		326413254DC5E4A015C89AE5 /* LearningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44302E1AEC96862B3CA4CC7F /* LearningTests.swift */; };
 		32CE5AE37EBA1ED29926E82F /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0074DE2D414298885D2E37C /* AppModel.swift */; };
@@ -124,6 +125,7 @@
 		2972BAE3073E24FE76A2C05F /* Shortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcuts.swift; sourceTree = "<group>"; };
 		2A94A254F9B50269EE1EAB8A /* Sotto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sotto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2CB0D3AFB6135CF0F2A5770D /* LiveLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveLine.swift; sourceTree = "<group>"; };
+		30957AED24B282351C327199 /* ComparePicks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComparePicks.swift; sourceTree = "<group>"; };
 		32E03B5BCB98F26F4092A741 /* IndicatorBarsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorBarsTests.swift; sourceTree = "<group>"; };
 		3DDDCC4D67F3362F90A402CB /* SettingsWindowVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowVisibility.swift; sourceTree = "<group>"; };
 		3F6DE0D49F84C5997837AD5B /* libSottoCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSottoCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -298,6 +300,7 @@
 			isa = PBXGroup;
 			children = (
 				736C318BBB19FC28BB5DAD37 /* ClipPlayer.swift */,
+				30957AED24B282351C327199 /* ComparePicks.swift */,
 				C7734F4B9659D31A646480FF /* CompareRunner.swift */,
 				A60E8313B287C5C1B8600D70 /* CompareView.swift */,
 				8788589EF36959C0F24BC73C /* CompareWindowController.swift */,
@@ -494,6 +497,7 @@
 				911774172043800B3A1E587F /* ClipPlayer.swift in Sources */,
 				40B938684CBBFD84C2A42B77 /* ClipStore.swift in Sources */,
 				F425A95F81A04B7E4E385CDB /* CohereEngine.swift in Sources */,
+				258710AD2164EFE5F3A83425 /* ComparePicks.swift in Sources */,
 				F8FB61F7A974BB1D80B16C65 /* CompareRunner.swift in Sources */,
 				7F9DBC2D65DC01734A3BF614 /* CompareView.swift in Sources */,
 				A472384657E652CA81D8DC13 /* CompareWindowController.swift in Sources */,
