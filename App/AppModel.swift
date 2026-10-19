@@ -41,8 +41,7 @@ final class AppModel {
     private let hotkeys = HotkeyMonitor()
     private let indicator = IndicatorPanel()
     private let menu = MenuBarController()
-    private var settingsWindow: NSWindow?
-    private var closeObserver: NSObjectProtocol?
+    private var settingsWindowController: SettingsWindowController?
     private var captured: FocusSnapshot?
     private var capturedDomain: String?
     private var engineRunning = false
@@ -141,8 +140,7 @@ final class AppModel {
     /// `activate()` does not take focus while another app is in front, so the prompt never appears.
     private func presentHotkeyPermission() {
         presentingPermission = true
-        NSApp.setActivationPolicy(.regular)
-        openSettings()
+        openSettings(pane: .shortcut)
         NSApp.activate(ignoringOtherApps: true)
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -158,7 +156,6 @@ final class AppModel {
     private func noteAccessibility() {
         guard presentingPermission, accessibilityOn else { return }
         presentingPermission = false
-        NSApp.setActivationPolicy(.accessory)
     }
 
     private func maintainTap() {
@@ -336,31 +333,12 @@ final class AppModel {
         LocalStore.save(rulebook: rulebook)
     }
 
-    func openSettings() {
+    func openSettings(pane: SettingsPane? = nil) {
         refreshMicrophones()
-        if settingsWindow == nil {
-            let host = NSHostingView(rootView: SettingsView(model: self))
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 420, height: 520),
-                styleMask: [.titled, .closable, .miniaturizable],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = "Sotto"
-            window.contentView = host
-            window.isReleasedWhenClosed = false
-            window.center()
-            closeObserver = NotificationCenter.default.addObserver(
-                forName: NSWindow.willCloseNotification,
-                object: window,
-                queue: .main
-            ) { _ in
-                Task { @MainActor in AppDelegateBridge.model?.syncHotkeySource() }
-            }
-            settingsWindow = window
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController(model: self)
         }
-        settingsWindow?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        settingsWindowController?.show(pane: pane)
     }
 
     private func apply(_ event: HoldTracker.Event) {
