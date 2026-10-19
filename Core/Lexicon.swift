@@ -10,18 +10,22 @@ public struct LearnedWord: Codable, Equatable, Sendable, Identifiable {
     public var heardForms: [String]
     public var sources: [LearnSource]
     public var count: Int
-    /// Clips the teacher found this word on. Each clip counts once.
+    /// Clips the teacher found this word on, under any heard form. Each clip counts once.
     public var teacherClips: [UUID]
+    /// The teacher's clips for each heard form, since only the same pair on two clips is learned.
+    public var teacherClipsByHeard: [String: [UUID]]
     public var learned: Bool
 
     public init(id: UUID = UUID(), written: String, heardForms: [String] = [], sources: [LearnSource] = [],
-                count: Int = 0, teacherClips: [UUID] = [], learned: Bool = false) {
+                count: Int = 0, teacherClips: [UUID] = [], teacherClipsByHeard: [String: [UUID]] = [:],
+                learned: Bool = false) {
         self.id = id
         self.written = written
         self.heardForms = heardForms
         self.sources = sources
         self.count = count
         self.teacherClips = teacherClips
+        self.teacherClipsByHeard = teacherClipsByHeard
         self.learned = learned
     }
 }
@@ -47,7 +51,7 @@ public struct Lexicon: Codable, Equatable, Sendable {
         entries.filter(\.learned)
     }
 
-    /// Fixes and Compare picks learn at once; the teacher learns on its second clip.
+    /// Fixes and Compare picks learn at once; the teacher learns when it finds the same pair on a second clip.
     /// A Compare pick also unblocks a deleted word.
     public func recording(_ s: Substitution, source: LearnSource, clipID: UUID?) -> Lexicon {
         let key = Self.normalized(s.written)
@@ -69,15 +73,19 @@ public struct Lexicon: Codable, Equatable, Sendable {
         var entry = copy.entries[index]
         var repeatsClip = false
         if source == .teacher, let clipID {
-            repeatsClip = entry.teacherClips.contains(clipID)
-            if !repeatsClip { entry.teacherClips.append(clipID) }
+            var clips = entry.teacherClipsByHeard[heard] ?? []
+            repeatsClip = clips.contains(clipID)
+            if !repeatsClip { clips.append(clipID) }
+            entry.teacherClipsByHeard[heard] = clips
+            if !entry.teacherClips.contains(clipID) { entry.teacherClips.append(clipID) }
         }
         if !entry.heardForms.contains(heard) { entry.heardForms.append(heard) }
         if !entry.sources.contains(source) { entry.sources.append(source) }
         if !repeatsClip { entry.count += 1 }
         switch source {
         case .fix, .compare: entry.learned = true
-        case .teacher: entry.learned = entry.learned || entry.teacherClips.count >= Self.teacherClipsToLearn
+        case .teacher:
+            entry.learned = entry.learned || (entry.teacherClipsByHeard[heard]?.count ?? 0) >= Self.teacherClipsToLearn
         }
         copy.entries[index] = entry
         return copy

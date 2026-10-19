@@ -15,11 +15,12 @@ public struct Substitution: Codable, Equatable, Hashable, Sendable {
 /// Finds the phrases one transcript substituted for another, by aligning their words.
 public enum PhraseAligner {
     /// `normalize` maps each lowercased, punctuation-free word before comparing, such as a spelling variety.
+    /// Returns nothing for transcripts too long to align (see `WordAlignment.maxCells`).
     public static func substitutions(from hypothesis: String, to reference: String, maxWords: Int = 4,
                                      normalize: (String) -> String = { $0 }) -> [Substitution] {
         let heard = AlignedWord.words(in: hypothesis, normalize: normalize)
         let written = AlignedWord.words(in: reference, normalize: normalize)
-        let alignment = WordAlignment(heard.map(\.key), written.map(\.key), freeEnds: false)
+        guard let alignment = WordAlignment(heard.map(\.key), written.map(\.key), freeEnds: false) else { return [] }
         return alignment.runs.compactMap { run in
             guard !run.heard.isEmpty, !run.written.isEmpty else { return nil }
             let span = run.withContext(written: written, heardLimit: heard.count, writtenLimit: 0..<written.count)
@@ -48,11 +49,11 @@ struct AlignedWord {
         }
     }
 
-    /// Context words read mid-phrase, so they lose a sentence capital but keep "I" and acronyms.
+    /// Context words read mid-phrase, so they lose a sentence capital but keep "I" and acronyms such as "NASA".
     var asContext: String {
         if display == "I" || display.hasPrefix("I'") || display.hasPrefix("I’") { return display }
         let letters = display.filter(\.isLetter)
-        if !letters.isEmpty, letters.allSatisfy(\.isUppercase) { return display }
+        if letters.count > 1, letters.allSatisfy(\.isUppercase) { return display }
         return display.lowercased()
     }
 
@@ -94,63 +95,68 @@ struct AlignedSpan {
 
 /// Word-level Levenshtein alignment. Among equally short edit scripts it keeps the most matched words.
 struct WordAlignment {
+    /// Caps the step table at about 4 MB (one byte a cell), and the work at a few tens of milliseconds.
+    static let maxCells = 4_000_000
+
     /// Maximal runs of unmatched words, in order. Either side of a run may be empty.
     private(set) var runs: [AlignedSpan] = []
     /// The written words the heard words were aligned against.
     private(set) var region: Range<Int> = 0..<0
     private(set) var matches = 0
 
-    private enum Step { case match, substitute, dropHeard, addWritten }
-    private struct Cell { var cost: Int; var matches: Int; var step: Step? }
+    private enum Step: UInt8 { case match, substitute, dropHeard, addWritten }
+    private struct Score { var cost: Int; var matches: Int }
 
     /// With `freeEnds`, written words before and after the aligned region cost nothing, which finds the
-    /// heard words inside a longer written text.
-    init(_ heard: [String], _ written: [String], freeEnds: Bool) {
-        let rows = heard.count, columns = written.count
-        var table = Array(repeating: Array(repeating: Cell(cost: 0, matches: 0, step: nil), count: columns + 1),
-                          count: rows + 1)
-        for j in 1..<columns + 1 {
-            table[0][j] = Cell(cost: freeEnds ? 0 : j, matches: 0, step: freeEnds ? nil : .addWritten)
-        }
+    /// heard words inside a longer written text. Nil when the two lists would need more than `maxCells`.
+    init?(_ heard: [String], _ written: [String], freeEnds: Bool) {
+        let rows = heard.count, width = written.count + 1
+        guard (rows + 1) * width <= Self.maxCells else { return nil }
+        // Scores are kept one row at a time; the steps are kept for the whole table to trace back.
+        var steps = [Step?](repeating: nil, count: (rows + 1) * width)
+        var previous = (0..<width).map { Score(cost: freeEnds ? 0 : $0, matches: 0) }
+        for j in 1..<width where !freeEnds { steps[j] = .addWritten }
         for i in 1..<rows + 1 {
-            table[i][0] = Cell(cost: i, matches: 0, step: .dropHeard)
-            for j in 1..<columns + 1 {
+            var current = previous
+            current[0] = Score(cost: i, matches: 0)
+            steps[i * width] = .dropHeard
+            for j in 1..<width {
                 let same = heard[i - 1] == written[j - 1]
-                let diagonal = table[i - 1][j - 1]
-                var best = Cell(cost: diagonal.cost + (same ? 0 : 1), matches: diagonal.matches + (same ? 1 : 0),
-                                step: same ? .match : .substitute)
-                let up = table[i - 1][j], left = table[i][j - 1]
-                for candidate in [Cell(cost: up.cost + 1, matches: up.matches, step: .dropHeard),
-                                  Cell(cost: left.cost + 1, matches: left.matches, step: .addWritten)]
-                where Self.better(candidate, than: best) {
-                    best = candidate
-                }
-                table[i][j] = best
+                var best = Score(cost: previous[j - 1].cost + (same ? 0 : 1),
+                                 matches: previous[j - 1].matches + (same ? 1 : 0))
+                var step = same ? Step.match : .substitute
+                let up = Score(cost: previous[j].cost + 1, matches: previous[j].matches)
+                if Self.better(up, than: best) { best = up; step = .dropHeard }
+                let left = Score(cost: current[j - 1].cost + 1, matches: current[j - 1].matches)
+                if Self.better(left, than: best) { best = left; step = .addWritten }
+                current[j] = best
+                steps[i * width + j] = step
             }
+            previous = current
         }
 
-        var end = columns
+        var end = width - 1
         if freeEnds {
             end = 0
-            for j in 0...columns where Self.better(table[rows][j], than: table[rows][end]) { end = j }
+            for j in 0..<width where Self.better(previous[j], than: previous[end]) { end = j }
         }
+        matches = previous[end].matches
 
-        var steps: [Step] = []
+        var path: [Step] = []
         var i = rows, j = end
-        while let step = table[i][j].step {
-            steps.append(step)
+        while let step = steps[i * width + j] {
+            path.append(step)
             switch step {
             case .match, .substitute: i -= 1; j -= 1
             case .dropHeard: i -= 1
             case .addWritten: j -= 1
             }
         }
-        steps.reverse()
+        path.reverse()
         region = j..<end
-        matches = table[rows][end].matches
 
         var open: AlignedSpan?
-        for step in steps {
+        for step in path {
             if step == .match {
                 if let run = open { runs.append(run) }
                 open = nil
@@ -167,7 +173,7 @@ struct WordAlignment {
         if let run = open { runs.append(run) }
     }
 
-    private static func better(_ a: Cell, than b: Cell) -> Bool {
+    private static func better(_ a: Score, than b: Score) -> Bool {
         a.cost < b.cost || (a.cost == b.cost && a.matches > b.matches)
     }
 }
