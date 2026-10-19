@@ -9,6 +9,8 @@ public struct TakeLedger: Sendable {
     public init() {}
 
     public var isPending: Bool { current.map { pending.contains($0) } ?? false }
+    /// True while any finished take, current or superseded, is still committing.
+    public var isCommitting: Bool { !pending.isEmpty }
 
     public mutating func begin() -> ID {
         let id = UUID()
