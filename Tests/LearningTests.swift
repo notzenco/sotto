@@ -87,6 +87,14 @@ final class LearningTests: XCTestCase {
         XCTAssertNil(FixDetector.fix(inserted: "What's up, Margie?", fieldText: field, near: 0))
     }
 
+    func testEveryReportedMishearingOfMyGSoundsAlike() {
+        for heard in ["maggie", "margie", "madgie"] {
+            XCTAssertTrue(SoundAlike.similar(heard, "my g"), heard)
+        }
+        XCTAssertEqual(FixDetector.fix(inserted: "What's up, Maggie?", fieldText: "What's up, my G?"),
+                       Substitution(heard: "maggie", written: "my G"))
+    }
+
     func testFixDetectorAddsContextToAShortWord() {
         XCTAssertEqual(FixDetector.fix(inserted: "My gee. Later", fieldText: "My G. Later"),
                        Substitution(heard: "my gee", written: "my G"))

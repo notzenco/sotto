@@ -12,7 +12,7 @@ public enum SoundAlike {
     }
 
     /// A simplified Metaphone key that keeps a coarse vowel for each vowel group, with a non-rhotic "r".
-    /// Single letters are spelled out ("g" → "jee"), so "my g" (`myje`) keys close to "Madgie" (`maje`).
+    /// Single letters are spelled out ("g" → "jee"), so "my g" (`myje`) keys close to "Madgie" and "Maggie" (`maje`).
     static func key(_ phrase: String) -> String {
         var sounds: [Character] = []
         for word in words(phrase) {
@@ -71,6 +71,8 @@ public enum SoundAlike {
                 continue
             }
             let letter = letters[index], next = at(index + 1)
+            // A doubled consonant is one sound, so "Maggie" keys like "Margie" (except "cc", as in "accept").
+            if next == letter, letter != "c" { index += 1; continue }
             var width = 1
             switch letter {
             case "w":
