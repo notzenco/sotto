@@ -15,8 +15,11 @@ final class TextInserter {
     /// Host of the focused window URL, with a leading "www." removed. Nil when there is no URL. Never a path or query.
     private(set) var lastDomain: String?
     private var clipboardRestoreTask: Task<Void, Never>?
-    /// The end of the last insertion, for fields that do not expose their text.
-    private var recent: (element: AXUIElement, text: String, date: Date)?
+    /// The last successful insertion: the field, the whole text typed, the UTF-16 cursor location just
+    /// before typing (nil when the field didn't say) and when. Also stands in for fields that hide their text.
+    private(set) var lastInsertion: (element: AXUIElement, text: String, offset: Int?, date: Date)?
+    /// The cursor location `textBeforeCursor` last read, for the insertion that follows it.
+    private var cursorBefore: (element: AXUIElement, location: Int)?
 
     func captureFocus() -> FocusSnapshot {
         let secureInput = IsSecureEventInputEnabled()
@@ -38,21 +41,43 @@ final class TextInserter {
     /// nil when the app does not say. A field that hides its text falls back to Sotto's own last
     /// insertion there, if it was recent.
     func textBeforeCursor(bundleID: String?) -> String? {
+        cursorBefore = nil
         guard let element = focusedElement() else { return nil }
         AXUIElementSetMessagingTimeout(element, 0.25)
         // A terminal's selection is in the scrollback, not at the prompt.
-        if !AppIdentity.isTerminal(bundleID ?? ""), let text = axTextBeforeCursor(element) { return text }
+        if !AppIdentity.isTerminal(bundleID ?? ""), let location = selectionLocation(element) {
+            cursorBefore = (element, location)
+            if let text = axTextBeforeCursor(element, at: location) { return text }
+        }
         if (attribute(element, kAXNumberOfCharactersAttribute) as? NSNumber)?.intValue == 0 { return "" }
-        guard let recent, CFEqual(recent.element, element),
+        guard let recent = lastInsertion, CFEqual(recent.element, element),
               Date().timeIntervalSince(recent.date) < 180 else { return nil }
-        return recent.text
+        return String(recent.text.suffix(32))
+    }
+
+    /// The whole text of a field Sotto typed into. Nil for secure fields, values over 100,000 characters,
+    /// and fields that are gone or don't expose their text.
+    func fieldText(of element: AXUIElement) -> String? {
+        AXUIElementSetMessagingTimeout(element, 0.25)
+        guard attribute(element, kAXSubroleAttribute) as? String != "AXSecureTextField" else { return nil }
+        if let count = (attribute(element, kAXNumberOfCharactersAttribute) as? NSNumber)?.intValue,
+           count > 100_000 { return nil }
+        guard let text = attribute(element, kAXValueAttribute) as? String,
+              (text as NSString).length <= 100_000 else { return nil }
+        return text
     }
 
     func insert(_ text: String, captured: FocusSnapshot,
                 isAllowed: () -> Bool = { true }) async -> InsertResult {
+        let cursor = cursorBefore
+        cursorBefore = nil
         let result = await deliver(text, captured: captured, isAllowed: isAllowed)
-        if result == .inserted, let element = focusedElement() {
-            recent = (element, String(text.suffix(32)), Date())
+        if result == .inserted {
+            // Without the element, forget the older insertion too, so it isn't watched again as this one.
+            lastInsertion = focusedElement().map { element in
+                let offset = cursor.flatMap { CFEqual($0.element, element) ? $0.location : nil }
+                return (element, text, offset, Date())
+            }
         }
         return result
     }
@@ -143,15 +168,20 @@ final class TextInserter {
         return value
     }
 
-    private func axTextBeforeCursor(_ element: AXUIElement) -> String? {
+    /// The UTF-16 location where the selection starts, which is where typing goes.
+    private func selectionLocation(_ element: AXUIElement) -> Int? {
         guard let value = attribute(element, kAXSelectedTextRangeAttribute),
               CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
         var selection = CFRange()
         guard AXValueGetValue(unsafeDowncast(value, to: AXValue.self), .cfRange, &selection),
               selection.location >= 0, selection.location != kCFNotFound else { return nil }
-        if selection.location == 0 { return "" }
-        let length = min(selection.location, 32)
-        var range = CFRange(location: selection.location - length, length: length)
+        return selection.location
+    }
+
+    private func axTextBeforeCursor(_ element: AXUIElement, at location: Int) -> String? {
+        if location == 0 { return "" }
+        let length = min(location, 32)
+        var range = CFRange(location: location - length, length: length)
         if let rangeValue = AXValueCreate(.cfRange, &range) {
             var string: CFTypeRef?
             if AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString,
@@ -161,7 +191,7 @@ final class TextInserter {
             }
         }
         guard let whole = attribute(element, kAXValueAttribute) as? String,
-              selection.location <= (whole as NSString).length else { return nil }
+              location <= (whole as NSString).length else { return nil }
         return (whole as NSString).substring(with: NSRange(location: range.location, length: range.length))
     }
 

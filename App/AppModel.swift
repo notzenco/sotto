@@ -46,6 +46,9 @@ final class AppModel {
     private var levelWatchers: Set<LevelWatcher> = []
     private let live = LiveLine()
     private let inserter = TextInserter()
+    @ObservationIgnored private lazy var fixWatcher = FixWatcher(inserter: inserter) { [weak self] fix in
+        self?.recordLearning(fix, source: .fix, clipID: nil)
+    }
     private let hotkeys = HotkeyMonitor()
     private let indicator = IndicatorPanel()
     private let menu = MenuBarController()
@@ -64,6 +67,7 @@ final class AppModel {
     private var takes = TakeLedger()
     private var postRollTake: TakeLedger.ID?
     private var parkedSamples: [TakeLedger.ID: [Float]] = [:]
+    @ObservationIgnored private var teacher: TeacherScheduler?
     private let log = Logger(subsystem: "app.sotto.desktop", category: "dictation")
 
     init() {
@@ -74,6 +78,13 @@ final class AppModel {
         history = LocalStore.loadHistory()
         library = ModelLibrary(typingModel: settings.typingModel, spelling: settings.spelling)
         clips = ClipStore(directory: LocalStore.clipsDirectory)
+        teacher = TeacherScheduler(
+            library: library, clips: clips,
+            settings: { [unowned self] in self.settings },
+            isDictating: { [unowned self] in self.listening || self.takes.isCommitting },
+            onSubstitution: { [weak self] substitution, clipID in
+                self?.recordLearning(substitution, source: .teacher, clipID: clipID)
+            })
         indicator.apply(settings.indicator)
         indicator.onHide = { [weak self] in
             self?.setLevelWatching(false, for: .indicator)
@@ -127,6 +138,7 @@ final class AppModel {
         Task { await library.prepareTypingModel() }
         clips.prune(now: Date())
         warmSpelling(settings.spelling)
+        teacher?.start()
     }
 
     /// Builds the spelling tables now rather than during the next dictation.
@@ -483,6 +495,7 @@ final class AppModel {
             guard let take = takes.finish() else { return }
             listening = false
             locked = false
+            teacher?.noteDictation()
             indicator.show(.working)
             let snapshot = captured
             let domain = capturedDomain
@@ -493,6 +506,7 @@ final class AppModel {
             guard let take = takes.cancel() else { return }
             listening = false
             locked = false
+            teacher?.noteDictation()
             if postRollTake == take { postRollTake = nil }
             parkedSamples.removeValue(forKey: take)
             capture.cancelUtterance()
@@ -508,6 +522,7 @@ final class AppModel {
     }
 
     private func beginTake(_ take: TakeLedger.ID) {
+        teacher?.noteDictation()
         if let previous = postRollTake {
             parkedSamples[previous] = capture.endUtterance()
             postRollTake = nil
@@ -522,6 +537,8 @@ final class AppModel {
         }
         setLevelWatching(true, for: .indicator)
         indicator.show(.listening(handsFree: locked))
+        // After beginTake returns, so a slow field read can't delay capture starting.
+        Task { [weak self] in self?.fixWatcher.check() }
     }
 
     private func provisional(_ text: String) {
@@ -533,6 +550,7 @@ final class AppModel {
         defer {
             takes.complete(take)
             parkedSamples.removeValue(forKey: take)
+            teacher?.noteDictation()
         }
         let started = Date()
         try? await Task.sleep(nanoseconds: 60_000_000)
@@ -616,6 +634,7 @@ final class AppModel {
         switch result {
         case .inserted:
             present(.done, take: take)
+            fixWatcher.watch()
         case .kept(let problem):
             present(.problem(problem), take: take)
         case .cancelled:
