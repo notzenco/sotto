@@ -50,4 +50,18 @@ final class SpellingConverterTests: XCTestCase {
     func testPunctuationAroundWordsSurvives() {
         XCTAssertEqual(SpellingConverter.convert("Color, flavor; honor!", to: .australian), "Colour, flavour; honour!")
     }
+
+    /// About shows this notice, so it must stay word for word the licence in the word list's header.
+    func testLicenceNoticeMatchesTheWordListHeader() throws {
+        let table = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Core/SpellingTable.swift")
+        let header = try String(contentsOf: table, encoding: .utf8)
+            .components(separatedBy: "\n")
+            .prefix { $0.hasPrefix("//") }
+            .map { $0 == "//" ? "" : String($0.dropFirst(3)) }
+        let start = try XCTUnwrap(header.firstIndex { $0.hasPrefix("Copyright 2000-2019") })
+        XCTAssertEqual(SpellingConverter.licenceNotice, header[start...].joined(separator: "\n"))
+        XCTAssertTrue(SpellingConverter.licenceNotice.hasSuffix("SUCH DAMAGE."))
+    }
 }
