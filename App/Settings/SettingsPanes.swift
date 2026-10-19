@@ -153,6 +153,10 @@ struct MicrophoneSettingsPane: View {
 
 struct SpeechSettingsPane: View {
     var model: AppModel
+    @State private var modelToDelete: SpeechModelID?
+    @State private var deleteError: String?
+    @State private var confirmingKeepAudioOff = false
+    @State private var confirmingDeleteClips = false
 
     var body: some View {
         Form {
@@ -164,17 +168,243 @@ struct SpeechSettingsPane: View {
                 }
                 .pickerStyle(.segmented)
             }
-            Section("Speech model") {
-                Text(model.modelStatusLine)
-                if case .failed = model.modelPhase {
-                    Button("Retry") { model.retryModel() }
+            Section("Typing model") {
+                ForEach(SpeechCatalog.all, id: \.id) { info in
+                    typingModelRow(info)
+                }
+                if let deleteError {
+                    Text(deleteError)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Section("Teacher") {
+                Picker("Teacher", selection: teacherSelection) {
+                    Text("Off").tag(SpeechModelID?.none)
+                    ForEach(teacherChoices, id: \.id) { info in
+                        Text(name(of: info)).tag(Optional(info.id))
+                    }
+                }
+                .pickerStyle(.menu)
+                if let teacher = model.settings.teacherModel {
+                    teacherStatus(SpeechCatalog.info(teacher))
+                } else {
+                    Text("Learning from your fixes and from Compare still works without a teacher.")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             Section {
-                Text("Language: English")
+                Picker("Spelling", selection: spellingSelection) {
+                    ForEach(SpellingVariety.allCases, id: \.self) { variety in
+                        Text(variety.label).tag(variety)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            Section("Compare models") {
+                Toggle("Keep audio for comparing models", isOn: keepAudioSelection)
+                Text("Clips stay on this Mac for 7 days.")
+                    .foregroundStyle(.secondary)
+                LabeledContent("Kept clips") {
+                    HStack {
+                        Text(clipCountText)
+                        Button("Delete All…") { confirmingDeleteClips = true }
+                            .disabled(model.clips.records.isEmpty)
+                    }
+                }
             }
         }
         .formStyle(.grouped)
+        .onAppear { model.library.refreshDownloadStates() }
+        .confirmationDialog(
+            modelToDelete.map { "Delete \(name(of: SpeechCatalog.info($0)))?" } ?? "",
+            isPresented: Binding(get: { modelToDelete != nil }, set: { if !$0 { modelToDelete = nil } })
+        ) {
+            Button("Delete", role: .destructive) {
+                if let id = modelToDelete { delete(id) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You can download it again later.")
+        }
+        .confirmationDialog(
+            "Delete the \(clipCountText)?",
+            isPresented: $confirmingKeepAudioOff
+        ) {
+            Button("Delete", role: .destructive) { model.setKeepAudio(false, deleteExisting: true) }
+            Button("Keep") { model.setKeepAudio(false, deleteExisting: false) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("New dictations won't be kept either way. Kept clips are deleted after 7 days.")
+        }
+        .confirmationDialog(
+            "Delete all \(clipCountText)?",
+            isPresented: $confirmingDeleteClips
+        ) {
+            Button("Delete", role: .destructive) { model.deleteAllClips() }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private func typingModelRow(_ info: SpeechModelInfo) -> some View {
+        let state = model.library.states[info.id]
+        let chosen = model.settings.typingModel == info.id
+        let inUse = model.library.typingModel == info.id
+        return HStack(alignment: .center, spacing: 10) {
+            Button {
+                if !chosen { model.setTypingModel(info.id) }
+            } label: {
+                Image(systemName: chosen ? "largecircle.fill.circle" : "circle")
+                    .foregroundStyle(chosen ? Color.accentColor : Color.secondary)
+                    .imageScale(.large)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Type with \(name(of: info))")
+            .accessibilityAddTraits(chosen ? .isSelected : [])
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(name(of: info))
+                    Text(sizeText(info))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text(info.summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !info.acceptsHints {
+                    Text("No hint words")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if case .failed(let reason)? = state {
+                    Text(reason.isEmpty ? "Failed" : reason)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer()
+            switch state {
+            case .downloading(let fraction)?:
+                progress(fraction)
+            case .preparing?:
+                Text("Preparing…").foregroundStyle(.secondary)
+            case .failed?:
+                Button("Retry") {
+                    if inUse {
+                        model.retryModel()
+                    } else if chosen {
+                        model.setTypingModel(info.id)
+                    } else {
+                        download(info.id)
+                    }
+                }
+            case .ready?:
+                if inUse {
+                    Text("In use").foregroundStyle(.secondary)
+                } else if !chosen {
+                    Button("Delete…") { modelToDelete = info.id }
+                        .accessibilityLabel("Delete \(name(of: info))")
+                }
+            case .notDownloaded?:
+                Button("Download") { download(info.id) }
+                    .accessibilityLabel("Download \(name(of: info))")
+            case nil:
+                if inUse {
+                    Text("In use").foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    /// The teacher row never starts a download itself; only its Download button does.
+    @ViewBuilder
+    private func teacherStatus(_ info: SpeechModelInfo) -> some View {
+        if info.id == model.settings.typingModel {
+            Text("The teacher has to be a different model from the typing model.")
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            switch model.library.states[info.id] {
+            case .notDownloaded?, .failed?:
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(downloadPrompt(info))
+                            .fixedSize(horizontal: false, vertical: true)
+                        if case .failed(let reason)? = model.library.states[info.id], !reason.isEmpty {
+                            Text(reason)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer()
+                    Button("Download") { download(info.id) }
+                }
+            case .downloading(let fraction)?:
+                LabeledContent("Downloading \(name(of: info))") { progress(fraction) }
+            case .preparing?:
+                LabeledContent(name(of: info)) { Text("Preparing…").foregroundStyle(.secondary) }
+            case .ready?, nil:
+                EmptyView()
+            }
+        }
+    }
+
+    private func progress(_ fraction: Double?) -> some View {
+        Group {
+            if let fraction {
+                ProgressView(value: fraction)
+            } else {
+                ProgressView().progressViewStyle(.linear)
+            }
+        }
+        .frame(width: 90)
+    }
+
+    private var teacherChoices: [SpeechModelInfo] {
+        let teacher = model.settings.teacherModel
+        // Keeps a teacher that equals the typing model listed, so the picker still shows it.
+        return SpeechCatalog.all.filter { $0.id != model.settings.typingModel || $0.id == teacher }
+    }
+
+    private func downloadPrompt(_ info: SpeechModelInfo) -> String {
+        let size = info.approximateMegabytes.map { " (\(Self.formatSize(megabytes: $0)))" } ?? ""
+        return "Download \(name(of: info))\(size) to start background learning"
+    }
+
+    /// Apple's model shows the English it listens for, which follows the spelling setting.
+    private func name(of info: SpeechModelInfo) -> String {
+        info.id == .appleEnglish ? "\(info.name) (\(model.settings.spelling.label))" : info.name
+    }
+
+    private func sizeText(_ info: SpeechModelInfo) -> String {
+        info.approximateMegabytes.map { Self.formatSize(megabytes: $0) } ?? "Built in"
+    }
+
+    private static func formatSize(megabytes: Int) -> String {
+        megabytes >= 1000
+            ? "\((Double(megabytes) / 1000).formatted(.number.precision(.fractionLength(0...1)))) GB"
+            : "\(megabytes) MB"
+    }
+
+    private var clipCountText: String {
+        let count = model.clips.records.count
+        return count == 1 ? "1 kept clip" : "\(count) kept clips"
+    }
+
+    private func download(_ id: SpeechModelID) {
+        Task { await model.library.download(id) }
+    }
+
+    private func delete(_ id: SpeechModelID) {
+        deleteError = nil
+        Task {
+            do { try await model.library.delete(id) }
+            catch { deleteError = error.localizedDescription }
+        }
     }
 
     private var modeSelection: Binding<DictationMode?> {
@@ -183,15 +413,93 @@ struct SpeechSettingsPane: View {
             set: { model.setModeOverride($0) }
         )
     }
+
+    private var teacherSelection: Binding<SpeechModelID?> {
+        Binding(
+            get: { model.settings.teacherModel },
+            set: { model.setTeacherModel($0) }
+        )
+    }
+
+    private var spellingSelection: Binding<SpellingVariety> {
+        Binding(
+            get: { model.settings.spelling },
+            set: { model.setSpelling($0) }
+        )
+    }
+
+    /// Turning it off asks about the clips already kept, if there are any.
+    private var keepAudioSelection: Binding<Bool> {
+        Binding(
+            get: { model.settings.keepAudio },
+            set: { on in
+                if on || model.clips.records.isEmpty {
+                    model.setKeepAudio(on, deleteExisting: false)
+                } else {
+                    confirmingKeepAudioOff = true
+                }
+            }
+        )
+    }
 }
 
 struct DictionarySettingsPane: View {
     var model: AppModel
     @State private var heard = ""
     @State private var written = ""
+    @State private var yourWord = ""
 
     var body: some View {
         Form {
+            Section("Learned") {
+                if model.lexicon.learnedWords.isEmpty {
+                    Text("Words Sotto learns from your fixes, from Compare and from the teacher show here.")
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                ForEach(model.lexicon.learnedWords) { word in
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(word.written)
+                            if !word.heardForms.isEmpty {
+                                Text("Heard as \(word.heardForms.joined(separator: ", "))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Text(origin(of: word))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        // No confirmation: the word stays blocked and can be added again under Your words.
+                        Button("Delete") { model.deleteLearnedWord(id: word.id) }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Delete \(word.written)")
+                    }
+                }
+            }
+            Section("Your words") {
+                if model.lexicon.yourWords.isEmpty {
+                    Text("Slang, names and brands you want Sotto to listen for.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(model.lexicon.yourWords, id: \.self) { word in
+                    HStack {
+                        Text(word)
+                        Spacer()
+                        Button("Delete") { model.removeYourWord(word) }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Delete \(word)")
+                    }
+                }
+                HStack {
+                    TextField("Word", text: $yourWord)
+                        .onSubmit(addYourWord)
+                    Button("Add", action: addYourWord)
+                        .disabled(yourWord.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
             Section("Names") {
                 if model.rulebook.replacements.isEmpty {
                     Text("When a name comes out wrong, write the spelling here.")
@@ -221,6 +529,25 @@ struct DictionarySettingsPane: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func addYourWord() {
+        guard !yourWord.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        model.addYourWord(yourWord)
+        yourWord = ""
+    }
+
+    private func origin(of word: LearnedWord) -> String {
+        let sources = word.sources.map { source in
+            switch source {
+            case .fix: "your fix"
+            case .compare: "Compare"
+            case .teacher: "the teacher"
+            }
+        }
+        let from = sources.isEmpty ? "" : "From \(sources.joined(separator: ", ")), "
+        let times = word.count == 1 ? "once" : "\(word.count) times"
+        return from + times
     }
 }
 
@@ -292,8 +619,25 @@ struct AboutSettingsPane: View {
             Section {
                 Text("Sotto \(version)")
                     .font(.headline)
-                Text("Speech model: NVIDIA Parakeet TDT 0.6B v2 (CC-BY-4.0), via FluidAudio.")
-                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Section("Credits") {
+                ForEach(SpeechCatalog.all.filter { !$0.credit.isEmpty }, id: \.id) { info in
+                    Text(info.credit)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let credit = SpellingConverter.credit {
+                    Text(credit)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Section {
+                DisclosureGroup("Spelling list licence") {
+                    Text(SpellingConverter.licenceNotice)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
         .formStyle(.grouped)
