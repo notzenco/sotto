@@ -244,3 +244,12 @@ Within the anti-goals: file layout, the clip file format (WAV, CAF or raw floats
   - leave the Mac idle on power and see teacher findings; unplug and check that the teacher stops;
   - Australian, British and American spelling in prose, and no change in a terminal or code editor;
   - say a few swear words and check they come out as said.
+
+## Known gaps after the build
+
+The final review left these for a later round. The owner can overrule any of them.
+
+- **Fixes ignore spelling variety only partly.** Compare picks and the teacher compare words spelling-insensitively; fix detection doesn't yet, so editing "color" to "colour" by hand can be learned as a hint word.
+- **Teacher picker during a switch.** While a new typing model downloads or prepares, the Teacher picker still lists it and hides the previous one, until the switch finishes.
+- **Late secure input.** If secure input turns on after a take starts and the Accessibility write then fails, the take's clip is kept.
+- **One-sound swaps.** Common swaps like "would" → "could" still count as fixes after one edit. A common-word guard is the next step.

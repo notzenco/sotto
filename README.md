@@ -52,7 +52,7 @@ Each row shows whether the model is in use, downloaded, downloading, or preparin
 
 **Hint words.** Words Sotto has learned, and words you add under Your words, are passed to the typing model as hint words. Parakeet models use FluidAudio's custom vocabulary, which rescores the text against the audio before changing a word, so a real "Maggie" stays "Maggie". It needs a separate model of about 100 MB, downloaded the first time a hint word exists. Apple English gets the words as contextual strings. Hint words are never blind text replacements.
 
-**Learning.** Sotto learns from three kinds of evidence. Differences in case, punctuation and spelling variety never count, and a change longer than four words is treated as a rewrite.
+**Learning.** Sotto learns from three kinds of evidence. Differences in case and punctuation never count, and a change longer than four words is treated as a rewrite. Compare picks and the teacher also ignore spelling variety ("color" and "colour" count as the same word). Your own fixes don't yet, so respelling a word by hand can be learned; delete it under Learned if that happens.
 
 - **Your fixes.** About 20 seconds after inserting, and when your next dictation starts within 2 minutes, Sotto reads the field back through Accessibility. If you changed one short phrase to something that sounds like it, such as "Madgie" to "my G", the word is learned at once. Fields that hide their text are skipped, and password fields are never read.
 - **Compare picks.** Your final choice for each clip in the Compare window is learned once, when the window closes or Sotto quits.
