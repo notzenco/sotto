@@ -184,3 +184,7 @@ log show --last 10m --info --predicate 'subsystem == "app.sotto.desktop"'
 - Spelling list: adapted from VarCon by Kevin Atkinson and Benjamin Titze, from word lists by Geoff Kuenning (a modified subset of common words). Its full licence notice is in About and in `Core/SpellingTable.swift`.
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) by FluidInference, Apache License 2.0.
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus, MIT License.
+
+## License
+
+Sotto's own code is MIT; see [`LICENSE`](LICENSE). The speech models, spelling list and dependencies keep their own licences, listed under Credits.
